@@ -1,16 +1,16 @@
 //////////////////////////////////////////////////////////////////////
-// °æÈ¨ (C), 1988-1999, XXXX¹«Ë¾
-// ÎÄ ¼ş Ãû: Pub_DbgDefFunc.h
-// ×÷    Õß:       °æ±¾:        Ê±¼ä: // ×÷Õß¡¢°æ±¾¼°Íê³ÉÈÕÆÚ
-// Ãè    Êö: ³ÌĞòdebugÏà¹Ø³£Á¿¶¨Òå£º°üÀ¨´òÓ¡ÌáÊ¾ĞÅÏ¢ÀàĞÍ¡¢Êä³öÎ»ÖÃ
-//           ³ÌĞòdebugÏà¹Ø½Ó¿Úº¯ÊıÉùÃ÷
-// Æä    Ëû£ºÓÃ #include <filename.h> ¸ñÊ½À´ÒıÓÃ±ê×¼¿âµÄÍ·ÎÄ¼ş£¨±àÒëÆ÷½«´Ó±ê×¼¿âÄ¿Â¼¿ªÊ¼ËÑË÷£©
-//           ÓÃ #include "filename.h" ¸ñÊ½À´ÒıÓÃ·Ç±ê×¼¿âµÄÍ·ÎÄ¼ş£¨±àÒëÆ÷½«´ÓÓÃ»§µÄ¹¤×÷Ä¿Â¼¿ªÊ¼ËÑË÷£©
-// ĞŞ¸Ä¼ÇÂ¼:     // ĞŞ¸ÄÀúÊ·¼ÇÂ¼ÁĞ±í£¬Ã¿ÌõĞŞ¸Ä¼ÇÂ¼Ó¦°üÀ¨ĞŞ¸ÄÈÕÆÚ¡¢ĞŞ¸Ä
-                 // Õß¼°ĞŞ¸ÄÄÚÈİ¼òÊö  
-// 1. Ê±¼ä:2016.02.19
-//    ×÷Õß:ÅíºìÓ¢
-//    ĞŞ¸ÄÄÚÈİ:ĞŞ¸ÄprintSimMsg()º¯ÊıÉùÃ÷
+// ç‰ˆæƒ (C), 1988-1999, XXXXå…¬å¸
+// æ–‡ ä»¶ å: Pub_DbgDefFunc.h
+// ä½œ    è€…:       ç‰ˆæœ¬:        æ—¶é—´: // ä½œè€…ã€ç‰ˆæœ¬åŠå®Œæˆæ—¥æœŸ
+// æ    è¿°: ç¨‹åºdebugç›¸å…³å¸¸é‡å®šä¹‰ï¼šåŒ…æ‹¬æ‰“å°æç¤ºä¿¡æ¯ç±»å‹ã€è¾“å‡ºä½ç½®
+//           ç¨‹åºdebugç›¸å…³æ¥å£å‡½æ•°å£°æ˜
+// å…¶    ä»–ï¼šç”¨ #include <filename.h> æ ¼å¼æ¥å¼•ç”¨æ ‡å‡†åº“çš„å¤´æ–‡ä»¶ï¼ˆç¼–è¯‘å™¨å°†ä»æ ‡å‡†åº“ç›®å½•å¼€å§‹æœç´¢ï¼‰
+//           ç”¨ #include "filename.h" æ ¼å¼æ¥å¼•ç”¨éæ ‡å‡†åº“çš„å¤´æ–‡ä»¶ï¼ˆç¼–è¯‘å™¨å°†ä»ç”¨æˆ·çš„å·¥ä½œç›®å½•å¼€å§‹æœç´¢ï¼‰
+// ä¿®æ”¹è®°å½•:     // ä¿®æ”¹å†å²è®°å½•åˆ—è¡¨ï¼Œæ¯æ¡ä¿®æ”¹è®°å½•åº”åŒ…æ‹¬ä¿®æ”¹æ—¥æœŸã€ä¿®æ”¹
+                 // è€…åŠä¿®æ”¹å†…å®¹ç®€è¿°  
+// 1. æ—¶é—´:2016.02.19
+//    ä½œè€…:å½­çº¢è‹±
+//    ä¿®æ”¹å†…å®¹:ä¿®æ”¹printSimMsg()å‡½æ•°å£°æ˜
 // 2. ...
 //////////////////////////////////////////////////////////////////////
 #ifndef _PUB_DBGDEFFUNC_H__
@@ -21,36 +21,36 @@
 
 #include "Pub_Def.h"
 
-// ³£Á¿¶¨Òå
-// ´òÓ¡ÌáÊ¾ĞÅÏ¢ÀàĞÍ£º´íÎó¡¢¾¯¸æ¡¢ÌáÊ¾ĞÅÏ¢£¬ÓÃÓÚ¼ÆËãÖĞµÄÌáÊ¾
-# define WS_FATAL     1		// ÖÂÃü´íÎó
-# define WS_ERROR     2		// ´íÎó
-# define WS_WARNING   3		// ¾¯¸æ
-# define WS_INFO      4		// ÌáÊ¾
+// å¸¸é‡å®šä¹‰
+// æ‰“å°æç¤ºä¿¡æ¯ç±»å‹ï¼šé”™è¯¯ã€è­¦å‘Šã€æç¤ºä¿¡æ¯ï¼Œç”¨äºè®¡ç®—ä¸­çš„æç¤º
+# define WS_FATAL     1		// è‡´å‘½é”™è¯¯
+# define WS_ERROR     2		// é”™è¯¯
+# define WS_WARNING   3		// è­¦å‘Š
+# define WS_INFO      4		// æç¤º
 
-// Êä³öµÄÎ»ÖÃ
-# define DOUT_SCREEN  1		// ÆÁÄ»´òÓ¡
-# define DOUT_FILE    2		// ÎÄ¼ş
-# define DOUT_NET     3		// ÍøÂç
+// è¾“å‡ºçš„ä½ç½®
+# define DOUT_SCREEN  1		// å±å¹•æ‰“å°
+# define DOUT_FILE    2		// æ–‡ä»¶
+# define DOUT_NET     3		// ç½‘ç»œ
 
 
 
-//-----------Íâ²¿º¯ÊıÉùÃ÷--------------------------------------------
-// DebugÎÄ¼şµÄ´ò¿ªºÍ¹Ø±Õ
+//-----------å¤–éƒ¨å‡½æ•°å£°æ˜--------------------------------------------
+// Debugæ–‡ä»¶çš„æ‰“å¼€å’Œå…³é—­
 extern void DebugFileOpenClose(const char *pcProjOut,int iIsOpen);
-// ¸ù¾İÀàĞÍiType´òÓ¡ÊäÈëĞÅÏ¢strÖÁÎ»ÖÃiOut
+// æ ¹æ®ç±»å‹iTypeæ‰“å°è¾“å…¥ä¿¡æ¯strè‡³ä½ç½®iOut
 //extern void printString(FixedString str,int iType,int iOut);
-// ´òÓ¡doubleĞÍÒ»Î¬Êı×éarr[iNB]
+// æ‰“å°doubleå‹ä¸€ç»´æ•°ç»„arr[iNB]
 extern void printDArray(int iNB,const double *pdArr,const char *str,int iOut);
-// ´òÓ¡intĞÍÒ»Î¬Êı×éarr[iNB]
+// æ‰“å°intå‹ä¸€ç»´æ•°ç»„arr[iNB]
 extern void printIArray(int iNB,const int *piArr,const char *str,int iOut);
-// ´òÓ¡doubleĞÍ¶şÎ¬Êı×éarr[iNRow][iNCol]
+// æ‰“å°doubleå‹äºŒç»´æ•°ç»„arr[iNRow][iNCol]
 extern void printD2Array(int iNRow,int iNCol,double **ppdArr,const char *str,int iOut);
-// ´òÓ¡·ÂÕæĞÅÏ¢
+// æ‰“å°ä»¿çœŸä¿¡æ¯
 //extern void printSimMsg(int iECTyp,int iECNo,int iENo,int iOut,FixedString str);
 //extern void printSimMsg(char *str);
 extern void printSimMsg(const char *str,...);
-// ´¦Àí´íÎóĞÅÏ¢
+// å¤„ç†é”™è¯¯ä¿¡æ¯
 //extern void dealSimMsg(int iECTyp,int iECNo,int iENo,int iType,int iOut,FixedString str);
 
 

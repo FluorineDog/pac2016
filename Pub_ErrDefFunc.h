@@ -1,89 +1,89 @@
 //////////////////////////////////////////////////////////////////////
-// °æÈ¨ (C), 1988-1999, XXXX¹«Ë¾
-// ÎÄ ¼þ Ãû: Pub_ErrDefFunc.h
-// ×÷    Õß:       °æ±¾:        Ê±¼ä: // ×÷Õß¡¢°æ±¾¼°Íê³ÉÈÕÆÚ
-// Ãè    Êö:     // ÓÃÓÚÏêÏ¸ËµÃ÷´Ë³ÌÐòÎÄ¼þÍê³ÉµÄÖ÷Òª¹¦ÄÜ£¬ÓëÆäËûÄ£¿é
-                 // »òº¯ÊýµÄ½Ó¿Ú£¬Êä³öÖµ¡¢È¡Öµ·¶Î§¡¢º¬Òå¼°²ÎÊý¼äµÄ¿Ø
-                 // ÖÆ¡¢Ë³Ðò¡¢¶ÀÁ¢»òÒÀÀµµÈ¹ØÏµ
-// Æä    Ëû£ºÓÃ #include <filename.h> ¸ñÊ½À´ÒýÓÃ±ê×¼¿âµÄÍ·ÎÄ¼þ£¨±àÒëÆ÷½«´Ó±ê×¼¿âÄ¿Â¼¿ªÊ¼ËÑË÷£©
-//           ÓÃ #include "filename.h" ¸ñÊ½À´ÒýÓÃ·Ç±ê×¼¿âµÄÍ·ÎÄ¼þ£¨±àÒëÆ÷½«´ÓÓÃ»§µÄ¹¤×÷Ä¿Â¼¿ªÊ¼ËÑË÷£©
-// ÐÞ¸Ä¼ÇÂ¼:     // ÐÞ¸ÄÀúÊ·¼ÇÂ¼ÁÐ±í£¬Ã¿ÌõÐÞ¸Ä¼ÇÂ¼Ó¦°üÀ¨ÐÞ¸ÄÈÕÆÚ¡¢ÐÞ¸Ä
-                 // Õß¼°ÐÞ¸ÄÄÚÈÝ¼òÊö  
-// 1. Ê±¼ä:2016.02.19
-//    ×÷Õß:ÅíºìÓ¢
-//    ÐÞ¸ÄÄÚÈÝ:´íÎóÐÅÏ¢½á¹¹ErrorStruÔö¼Ó±äÁ¿iELevel
+// ç‰ˆæƒ (C), 1988-1999, XXXXå…¬å¸
+// æ–‡ ä»¶ å: Pub_ErrDefFunc.h
+// ä½œ    è€…:       ç‰ˆæœ¬:        æ—¶é—´: // ä½œè€…ã€ç‰ˆæœ¬åŠå®Œæˆæ—¥æœŸ
+// æ    è¿°:     // ç”¨äºŽè¯¦ç»†è¯´æ˜Žæ­¤ç¨‹åºæ–‡ä»¶å®Œæˆçš„ä¸»è¦åŠŸèƒ½ï¼Œä¸Žå…¶ä»–æ¨¡å—
+                 // æˆ–å‡½æ•°çš„æŽ¥å£ï¼Œè¾“å‡ºå€¼ã€å–å€¼èŒƒå›´ã€å«ä¹‰åŠå‚æ•°é—´çš„æŽ§
+                 // åˆ¶ã€é¡ºåºã€ç‹¬ç«‹æˆ–ä¾èµ–ç­‰å…³ç³»
+// å…¶    ä»–ï¼šç”¨ #include <filename.h> æ ¼å¼æ¥å¼•ç”¨æ ‡å‡†åº“çš„å¤´æ–‡ä»¶ï¼ˆç¼–è¯‘å™¨å°†ä»Žæ ‡å‡†åº“ç›®å½•å¼€å§‹æœç´¢ï¼‰
+//           ç”¨ #include "filename.h" æ ¼å¼æ¥å¼•ç”¨éžæ ‡å‡†åº“çš„å¤´æ–‡ä»¶ï¼ˆç¼–è¯‘å™¨å°†ä»Žç”¨æˆ·çš„å·¥ä½œç›®å½•å¼€å§‹æœç´¢ï¼‰
+// ä¿®æ”¹è®°å½•:     // ä¿®æ”¹åŽ†å²è®°å½•åˆ—è¡¨ï¼Œæ¯æ¡ä¿®æ”¹è®°å½•åº”åŒ…æ‹¬ä¿®æ”¹æ—¥æœŸã€ä¿®æ”¹
+                 // è€…åŠä¿®æ”¹å†…å®¹ç®€è¿°  
+// 1. æ—¶é—´:2016.02.19
+//    ä½œè€…:å½­çº¢è‹±
+//    ä¿®æ”¹å†…å®¹:é”™è¯¯ä¿¡æ¯ç»“æž„ErrorStruå¢žåŠ å˜é‡iELevel
 // 2. ...
 //////////////////////////////////////////////////////////////////////
 #ifndef _PUB_ERRDEFFUNC_H__
 #define _PUB_ERRDEFFUNC_H__
 
 
-// ¿É´¦Àí×î´ó´íÎóÊý
+// å¯å¤„ç†æœ€å¤§é”™è¯¯æ•°
 #define MAXERRNUM 100
-//----------ÏµÍ³·ÂÕæ´íÎóºÅ¶¨Òå---------------------------------------
-// ÏµÍ³·ÂÕæ´íÎóºÅ¶¨Òå
-// ±Ø±¸ÎÄ¼þ²»´æÔÚ»ò´ò¿ª³ö´í£¬ÖÂÃü´íÎó£¬³ÌÐòÍË³ö
+//----------ç³»ç»Ÿä»¿çœŸé”™è¯¯å·å®šä¹‰---------------------------------------
+// ç³»ç»Ÿä»¿çœŸé”™è¯¯å·å®šä¹‰
+// å¿…å¤‡æ–‡ä»¶ä¸å­˜åœ¨æˆ–æ‰“å¼€å‡ºé”™ï¼Œè‡´å‘½é”™è¯¯ï¼Œç¨‹åºé€€å‡º
 # define ERROR_FILEOPEN 1
-// ±Ø±¸ÎÄ¼þ´æÔÚµ«Îª¿Õ£¬ÖÂÃü´íÎó£¬³ÌÐòÍË³ö
+// å¿…å¤‡æ–‡ä»¶å­˜åœ¨ä½†ä¸ºç©ºï¼Œè‡´å‘½é”™è¯¯ï¼Œç¨‹åºé€€å‡º
 # define ERROR_FILEEMPTY 2
-// Ôª¼þ²ÎÊýÌîÐ´ÓÐÎó,·ÇÖÂÃüµÄ£¬¿ÉÓÉ³ÌÐòÐÞÕý
+// å…ƒä»¶å‚æ•°å¡«å†™æœ‰è¯¯,éžè‡´å‘½çš„ï¼Œå¯ç”±ç¨‹åºä¿®æ­£
 # define ERROR_PARA 3
-// Ôª¼þ²ÎÊýÓÐÎó£¬ÖÂÃü´íÎó£¬³ÌÐòÍË³ö
+// å…ƒä»¶å‚æ•°æœ‰è¯¯ï¼Œè‡´å‘½é”™è¯¯ï¼Œç¨‹åºé€€å‡º
 # define ERROR_PARAFATAL 4
-// Ôª¼þÀàÐÍ²»´æÔÚ
+// å…ƒä»¶ç±»åž‹ä¸å­˜åœ¨
 # define ERROR_CTYP 5
-// Êä³ö±äÁ¿ºÅ²»´æÔÚ
+// è¾“å‡ºå˜é‡å·ä¸å­˜åœ¨
 # define ERROR_VARNO 6
-// Ôª¼þ²»´æÔÚÊä³ö±äÁ¿
+// å…ƒä»¶ä¸å­˜åœ¨è¾“å‡ºå˜é‡
 # define ERROR_NOVAROUT 7
-// ÄÚ´æ·ÖÅäÊ§°Ü
+// å†…å­˜åˆ†é…å¤±è´¥
 # define ERROR_ALLOC 8
-// ÄÚ´æÖØÐÂ·ÖÅäÊ§°Ü
+// å†…å­˜é‡æ–°åˆ†é…å¤±è´¥
 # define ERROR_REALLOC 9
-// ´´½¨ÎÄ¼þÊ§°Ü
+// åˆ›å»ºæ–‡ä»¶å¤±è´¥
 # define ERROR_FILECREAT 10
-// ÊýÄ¿³¬¹ý¶¨ÒåµÄ×î´óÎ¬Êý£¬ÖÂÃü´íÎó£¬³ÌÐòÍË³ö
+// æ•°ç›®è¶…è¿‡å®šä¹‰çš„æœ€å¤§ç»´æ•°ï¼Œè‡´å‘½é”™è¯¯ï¼Œç¨‹åºé€€å‡º
 # define ERROR_OUTOFMAX 11
-// ½¨Ä£´íÎó
+// å»ºæ¨¡é”™è¯¯
 # define ERROR_MODELING 12
-// ×Ó³ÌÐòÔËÐÐ³ö´í
+// å­ç¨‹åºè¿è¡Œå‡ºé”™
 # define ERROR_FUNC 13
-// ³ýÊýÎª0
+// é™¤æ•°ä¸º0
 # define ERROR_DIV 14
-// ¾ØÕóÇóÄæÊ§°Ü
+// çŸ©é˜µæ±‚é€†å¤±è´¥
 # define ERROR_INVMAT 15
-// Ôª¼þÁ½¶Ë½ÓµØ
+// å…ƒä»¶ä¸¤ç«¯æŽ¥åœ°
 # define ERROR_GNDBOTH 16
-// ¾ØÕóÆæÒì£¬LU·Ö½âÊ§°Ü
+// çŸ©é˜µå¥‡å¼‚ï¼ŒLUåˆ†è§£å¤±è´¥
 # define ERROR_LUMAT 17
-// ´æÔÚ³ý»ù×¼¡¢ÓÐÃû¡¢±êçÛÒÔÍâµÄÊäÈëÊä³ö±äÁ¿ÀàÐÍ
+// å­˜åœ¨é™¤åŸºå‡†ã€æœ‰åã€æ ‡å¹ºä»¥å¤–çš„è¾“å…¥è¾“å‡ºå˜é‡ç±»åž‹
 # define ERROR_IOCALTYP 18
-// ×Ô¶¨Òå¼ÆËãÊ§°Ü
+// è‡ªå®šä¹‰è®¡ç®—å¤±è´¥
 # define ERROR_UDMCAL 19
-// ²åÖµËã·¨×ÔÈ»Í¨¶Ï²åÖµÊ±¼ä¼ÆËãÊ§°Ü
+// æ’å€¼ç®—æ³•è‡ªç„¶é€šæ–­æ’å€¼æ—¶é—´è®¡ç®—å¤±è´¥
 # define ERROR_INTERPTIMECAL 20
-// ¼ÆËã²»ÊÕÁ²
+// è®¡ç®—ä¸æ”¶æ•›
 # define ERROR_NOTCONVERGENT 21
 
-//----------´æ´¢´íÎóÐÅÏ¢Êý×é---------------------------------------
-// ´íÎóÐÅÏ¢½á¹¹
+//----------å­˜å‚¨é”™è¯¯ä¿¡æ¯æ•°ç»„---------------------------------------
+// é”™è¯¯ä¿¡æ¯ç»“æž„
 typedef struct
 {
-	int iENo;	// ´íÎóºÅ
-	int iECTyp;	// ´íÎóÔª¼þÀàÐÍ
-	int iECNo;	// ´íÎóÔª¼þºÅ
-	int iELevel;// ´íÎóµÈ¼¶£º
+	int iENo;	// é”™è¯¯å·
+	int iECTyp;	// é”™è¯¯å…ƒä»¶ç±»åž‹
+	int iECNo;	// é”™è¯¯å…ƒä»¶å·
+	int iELevel;// é”™è¯¯ç­‰çº§ï¼š
 }ErrorStru;
 
 
-//-----------Íâ²¿º¯ÊýÉùÃ÷--------------------------------------------
-// ·ÂÕæ´íÎóÐÅÏ¢Êý×éÖµÇåÁã
+//-----------å¤–éƒ¨å‡½æ•°å£°æ˜Ž--------------------------------------------
+// ä»¿çœŸé”™è¯¯ä¿¡æ¯æ•°ç»„å€¼æ¸…é›¶
 extern void clearSimError();
-// ½«ÊäÈëµÄ·ÂÕæ´íÎó¸³Öµ¸ø´íÎóÐÅÏ¢Êý×éÖÐµÚÒ»¸ö´íÎóºÅÎª0µÄÎ»ÖÃ
+// å°†è¾“å…¥çš„ä»¿çœŸé”™è¯¯èµ‹å€¼ç»™é”™è¯¯ä¿¡æ¯æ•°ç»„ä¸­ç¬¬ä¸€ä¸ªé”™è¯¯å·ä¸º0çš„ä½ç½®
 extern void setSimError(ErrorStru *Err);
-// Í³Ò»´¦Àí·ÂÕæ´íÎó
+// ç»Ÿä¸€å¤„ç†ä»¿çœŸé”™è¯¯
 extern int dealSimError();
-// ÄÚ´æ·ÖÅä³É¹¦Óë·ñ¼ì²é£¬²¢´òÓ¡ÏàÓ¦ÐÅÏ¢
+// å†…å­˜åˆ†é…æˆåŠŸä¸Žå¦æ£€æŸ¥ï¼Œå¹¶æ‰“å°ç›¸åº”ä¿¡æ¯
 extern void checkPoint(void *p,char *str);
 
 #endif
