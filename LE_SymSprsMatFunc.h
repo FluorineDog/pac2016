@@ -54,7 +54,7 @@ extern void LU_SymbolicSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU);
 extern void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU);
 //对称矩阵前推回代方法求解方程组
 extern void LE_FBackwardSym(SprsUMatRealStru *pFU,double b[],double x[]);
-/////////end of xdc added 2014-6-16
+/////////end of xdc added 2014-6-1cod6
 
 #endif
 

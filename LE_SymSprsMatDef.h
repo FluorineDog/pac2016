@@ -59,8 +59,8 @@ typedef struct
 //LU分解后的U阵值描述
 typedef struct
 {
-   SprsUMatStru uMax;  //矩阵结构
-   double *d_u;  //分解后对角元值,iDim+1维
+  SprsUMatStru uMax;  //矩阵结构
+  double *d_u;  //分解后对角元值,iDim+1维
 	double *u_u;  //上三角元素值(行向),已归一化,iNzs+1维
 
    //以下两个数组为LU数值分解时所需要的工作数组

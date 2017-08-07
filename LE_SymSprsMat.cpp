@@ -16,6 +16,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <iostream>
+using std::cout;
+using std::cerr;
+using std::endl;
 
 #include "LE_SymSprsMatFunc.h"
 #include "LE_SymSprsMatDef.h"
@@ -71,20 +75,23 @@ void initMem_VecReal(VecRealStru *V)
 //////////////////////////////////////////////////////////////////////
 void allocate_MatReal(SprsMatRealStru *A)
 {
-	int m = 0;
+	int dimension = 0;
 	int n = 0;
-
-	m = A->Mat.iDim + 1;
-	A->Mat.iNymax = m * (m + 1)/2;  // 矩阵元素最大数目
+  cerr << "iDim: " <<  A->Mat.iDim << endl;
+  cerr << "iNymax: " <<  A->Mat.iNymax << endl;
+  cerr << "iNy: " <<  A->Mat.iNy << endl;
+	dimension = A->Mat.iDim + 1;
+	A->Mat.iNymax = dimension * (dimension + 1)/2;  // 矩阵元素最大数目
 	n = A->Mat.iNymax  + 1;
-
+  // Guess: use rank 1 as the first element instead of rank 0
+  // Fuck mathematicians
 	A->Mat.piJno = (int *)calloc(n,sizeof(int));
-	A->Mat.piIstart = (int *)calloc(m+1,sizeof(int));
-	A->Mat.piIdiag = (int *)calloc(m,sizeof(int));
+	A->Mat.piIstart = (int *)calloc(dimension+1,sizeof(int));
+	A->Mat.piIdiag = (int *)calloc(dimension,sizeof(int));
 	A->Mat.piLinkp = (int *)calloc(n,sizeof(int));	
 	A->Mat.piLinkn = (int *)calloc(n,sizeof(int));
 	A->pdVal = (double *)calloc(n,sizeof(double));
-}
+ }
 
 //////////////////////////////////////////////////////////////////////
 // 函 数 名:          // allocate_VecReal
@@ -142,7 +149,7 @@ void deallocate_VecReal(VecRealStru *V)
 // 返 回 值:          // 无
 // 其    他:          // 其它说明,writted by xdc 2014/6/16
 //////////////////////////////////////////////////////////////////////
-void SparseMatrix_adlink(SprsMatRealStru *pA)
+static void SparseMatrix_adlink(SprsMatRealStru *pA)
 {
    int iDim;
    int i,j,k,m,r;
@@ -223,7 +230,7 @@ void SparseMatrix_adlink(SprsMatRealStru *pA)
 // 返 回 值:          // 无
 // 其    他:          // 不会影响G阵中矩阵的任何信息,created by xdc 2014/6/16
 //////////////////////////////////////////////////////////////////////
-void LU_EliminationTreeG(SprsMatRealStru *pG, int* pParent)
+static void LU_EliminationTreeG(SprsMatRealStru *pG, int* pParent)
 {
    int jmn;
 	int i,j,t;
@@ -286,7 +293,7 @@ void LU_EliminationTreeG(SprsMatRealStru *pG, int* pParent)
 // 返 回 值:          // 无
 // 其    他:          // 不会影响G阵中矩阵的任何信息,created by xdc 2014/6/16
 //////////////////////////////////////////////////////////////////////
-void LU_SetUMatECountsG(SprsMatRealStru *pG,int* pParent,SprsUMatRealStru *pU)
+static void LU_SetUMatECountsG(SprsMatRealStru *pG,int* pParent,SprsUMatRealStru *pU)
 {
 	int i,j;
 	int jmn,kp,kn,iDim;
