@@ -8,7 +8,7 @@
 #include <time.h>
 
 //从文件中读取，形成A矩阵,0-成功，其他-失败
-int ReadMatrixA(SprsMatRealStru *A, char* filename)
+int ReadMatrixA(SprsMatRealStru *A, const char* filename)
 {
 	FILE * fp=NULL;
 	char LineBuffer[1024];
@@ -43,7 +43,7 @@ int ReadMatrixA(SprsMatRealStru *A, char* filename)
 	allocate_MatReal(A);
 	memset(LineBuffer,0,1024);
 	fgets(LineBuffer, 1024, fp);
-	for (i = 0; i < A->Mat.iNymax+1; i++)
+	for (i = 0; i < A->Mat.iNymax+1; i++) // ???
 	{
 		if (fscanf(fp, "%d\n", &(A->Mat.piJno[i])) != 1)
 		{
@@ -51,6 +51,7 @@ int ReadMatrixA(SprsMatRealStru *A, char* filename)
 			return -5;
 		}
 	}
+
 	memset(LineBuffer, 0, 1024);
 	fgets(LineBuffer, 1024, fp);
 	for (i = 0; i < A->Mat.iDim+2; i++)
@@ -61,6 +62,7 @@ int ReadMatrixA(SprsMatRealStru *A, char* filename)
 			return -5;
 		}
 	}
+
 	memset(LineBuffer, 0, 1024);
 	fgets(LineBuffer, 1024, fp);
 	for (i = 0; i < A->Mat.iDim + 1; i++)
@@ -71,6 +73,7 @@ int ReadMatrixA(SprsMatRealStru *A, char* filename)
 			return -5;
 		}
 	}
+
 	memset(LineBuffer, 0, 1024);
 	fgets(LineBuffer, 1024, fp);
 	for (i = 0; i < A->Mat.iNymax + 1; i++)
@@ -81,6 +84,7 @@ int ReadMatrixA(SprsMatRealStru *A, char* filename)
 			return -5;
 		}
 	}
+
 	memset(LineBuffer, 0, 1024);
 	fgets(LineBuffer, 1024, fp);
 	for (i = 0; i < A->Mat.iNymax + 1; i++)
@@ -91,6 +95,7 @@ int ReadMatrixA(SprsMatRealStru *A, char* filename)
 			return -5;
 		}
 	}
+
 	memset(LineBuffer, 0, 1024);
 	fgets(LineBuffer, 1024, fp);
 	for (i = 0; i < A->Mat.iNymax + 1; i++)
@@ -101,10 +106,11 @@ int ReadMatrixA(SprsMatRealStru *A, char* filename)
 			return -5;
 		}
 	}
+
 	return 0;
 }
 //将A矩阵写入文件,0-成功，其他-失败
-int WriteMatrixA(SprsMatRealStru *A, char* filename)
+int WriteMatrixA(SprsMatRealStru *A, const char* filename)
 {
 	FILE *fp=NULL;
 	int i;
@@ -115,7 +121,7 @@ int WriteMatrixA(SprsMatRealStru *A, char* filename)
 		fprintf(stderr,"WriteMatrixA:NULL arguments!\n");
 		return -1;
 	}
-	
+
 	fp = fopen(filename, "wb");
 	if (!fp)
 	{
@@ -197,6 +203,7 @@ int WriteMatrixA(SprsMatRealStru *A, char* filename)
 	{
 		for (i = 0; i < A->Mat.iNymax + 1; i++)
 		{
+			// mdzz
 			fprintf(fp, "%22.15e\n", A->pdVal[i]);
 		}
 	}
@@ -207,7 +214,7 @@ int WriteMatrixA(SprsMatRealStru *A, char* filename)
 //从文件中读取，形成B向量数组,0-成功，其他-失败
 //B是指针数组，传入NULL指针，函数执行完成后，指针非NULL
 //nsize是指针数组的维数，传入0或者任意值，传出指针数组维数
-int ReadVectorB(VecRealStru **B, int &nsize, char* filename)
+int ReadVectorB(VecRealStru **B, int &nsize, const char* filename)
 {
 	FILE * fp=NULL;
 	int i,j,m,tnsize;
@@ -232,7 +239,7 @@ int ReadVectorB(VecRealStru **B, int &nsize, char* filename)
 			return -2;
 		}
 		if (nsize != tnsize)
-		{	
+		{
 			fprintf(stderr, "ReadVectorB: nsize error!\n");
 			return -3;
 		}
@@ -243,10 +250,10 @@ int ReadVectorB(VecRealStru **B, int &nsize, char* filename)
 			fprintf(stderr, "ReadVectorB:read error!\n");
 			return -2;
 		}
-		
+
 		((*B)+i)->iNy = tNy;
 		((*B)+i)->pdVal = new double[((*B)+i)->iNy + 1];
-	
+
 		memset(LineBuffer, 0, 1024);
 		fgets(LineBuffer, 1024, fp);
 		for (j = 0; j < ((*B)+i)->iNy+1; j++)
@@ -258,19 +265,19 @@ int ReadVectorB(VecRealStru **B, int &nsize, char* filename)
 			}
 			((*B)+i)->pdVal[j] = val;
 			val = 0;
-			
+
 		}
 
 	}
 	fclose(fp);
 	return 0;
 
-	
+
 }
 //将B向量数组写入文件,0-成功，其他-失败
 //B是指针数组，传入非NULL指针，函数执行过程中不得修改B的内容
 //nsize是指针数组的维数，传入维数，函数执行过程中不得修改
-int WriteVectorB(VecRealStru *B, int nsize, char* filename)
+int WriteVectorB(VecRealStru *B, int nsize, const char* filename)
 {
 	FILE *fp = NULL;
 	int i, j;
@@ -285,7 +292,7 @@ int WriteVectorB(VecRealStru *B, int nsize, char* filename)
 	sprintf(LineBuffer,"Vector nsize");
 	fprintf(fp, "%s\n",LineBuffer);
 	fprintf(fp,"%d\n",nsize);
-	
+
 	memset(LineBuffer,0,1024);
 	sprintf(LineBuffer,"VecReadStruN->iNy");
 	fprintf(fp,"%s\n",LineBuffer);
@@ -302,7 +309,7 @@ int WriteVectorB(VecRealStru *B, int nsize, char* filename)
 	fclose(fp);
 	return 0;
 }
-int ReadVectorX(VecRealStru *X,int &nsize,char *filename)
+int ReadVectorX(VecRealStru *X,int &nsize,const char *filename)
 {
 	FILE * fp=NULL;
 	int i,j,m,tnsize;
@@ -325,7 +332,7 @@ int ReadVectorX(VecRealStru *X,int &nsize,char *filename)
 	if(nsize!=tnsize)
 	{
 		fprintf(stderr, "ReadVectorX:read size err!\n");
-		return -3;	
+		return -3;
 	}
 	memset(LineBuffer,0,1024);
 	fgets(LineBuffer,1024,fp);
@@ -369,7 +376,7 @@ int CompareVectorX(VecRealStru *X,int &nsize,VecRealStru *result)
 			if((X[i].pdVal[j]-result[i].pdVal[j]>1e-9)||(result[i].pdVal[j]-X[i].pdVal[j]>1e-9))
 			{
 				fprintf(fp,"matrix dimensions=%dColumn number matrix =%d,reference results=%22.15e,running result:%22.15e\n",i,j,X[i].pdVal[j],result[i].pdVal[j]);
-			num++;				
+			num++;
 			}
 
 		 }
@@ -385,7 +392,7 @@ int CompareVectorX(VecRealStru *X,int &nsize,VecRealStru *result)
 	 return 0;
 }
 
-int WriteVectorX(VecRealStru *X, int nsize, char * filename)
+int WriteVectorX(VecRealStru *X, int nsize, const char* filename)
 {
 	FILE *fp = NULL;
 	int i, j;
@@ -407,7 +414,7 @@ int WriteVectorX(VecRealStru *X, int nsize, char * filename)
 	for (i = 0; i < nsize;i++)
 	fprintf(fp, "%d\n", X[i].iNy);
 
-	
+
 	for (i = 0; i < nsize; i++)
 	{
 		memset(LineBuffer, 0, 1024);
@@ -425,99 +432,99 @@ int main(int argc, char* argv[])
 {
 	clock_t timeStart;   // 仿真开始时间
 	clock_t timeEnd;     // 仿真结束时间
-    double delapseTime = 0; // 仿真过程花费时间
-   //AX=B
-   SprsMatRealStru A;
-   SprsUMatRealStru U;
-   VecRealStru *X;
-   VecRealStru *B;
-   VecRealStru *Reference;
-   int nsize,i,j;
+		double delapseTime = 0; // 仿真过程花费时间
+	 //AX=B
+	 SprsMatRealStru A;
+	 SprsUMatRealStru U;
+	 VecRealStru *X;
+	 VecRealStru *B;
+	 VecRealStru *Reference;
+	 int nsize,i,j;
 
-   initMem_MatReal(&A);
-   initMem_UMatReal(&U);
-   //add by wsh
-   
-   //add end by wsh 20170621
-   //添加构建A阵的读写函数
-   printf("Begin ReadMatrixA...\n");
-   ReadMatrixA(&A,"A.txt");
-   printf("ReadMatrixA finish!\n");
-   ////////////////////////
+	 initMem_MatReal(&A);
+	 initMem_UMatReal(&U);
+	 //add by wsh
 
-   //测试写AA////////////////
-   //WriteMatrixA(&A,"AA.txt");
-   //////////////////////////
-   nsize = 10000;
+	 //add end by wsh 20170621
+	 //添加构建A阵的读写函数
+	 printf("Begin ReadMatrixA...\n");
+	 ReadMatrixA(&A,"A.txt");
+	 printf("ReadMatrixA finish!\n");
+	 ////////////////////////
+
+	 //测试写AA////////////////
+	 //WriteMatrixA(&A,"AA.txt");
+	 //////////////////////////
+	 nsize = 10000;
  //  B = new VecRealStru[nsize];
-   printf("Begin ReadVectorB...\n");
-   //添加构建B向量的函数
-   ReadVectorB(&B,nsize,"B.txt");
-   printf("ReadVectorB finish!\n");
-   ////////////////////////
-   //printf("%22.15e\n", B[1].pdVal[1]);
-   //for (i = 0; i < nsize;i++)
-	  // WriteVectorB(&B[i], nsize, "BB.txt");
+	 printf("Begin ReadVectorB...\n");
+	 //添加构建B向量的函数
+	 ReadVectorB(&B,nsize,"B.txt");
+	 printf("ReadVectorB finish!\n");
+	 ////////////////////////
+	 //printf("%22.15e\n", B[1].pdVal[1]);
+	 //for (i = 0; i < nsize;i++)
+		// WriteVectorB(&B[i], nsize, "BB.txt");
 
 //   WriteVectorX(B, nsize, "X.txt");
-   //初始化X数组
-   X=new VecRealStru[nsize];
-   for(i=0; i<nsize;i++)
-   {
-      initMem_VecReal(&X[i]);
-      X[i].iNy=B[i].iNy;
-      allocate_VecReal(&X[i]);
-   }
- 
+	 //初始化X数组
+	 X=new VecRealStru[nsize];
+	 for(i=0; i<nsize;i++)
+	 {
+			initMem_VecReal(&X[i]);
+			X[i].iNy=B[i].iNy;
+			allocate_VecReal(&X[i]);
+	 }
 
-   ////////////////////////////////
 
-   printf("The Program is Running...\n");
-   // 获取仿真开始时间
+	 ////////////////////////////////
+
+	 printf("The Program is Running...\n");
+	 // 获取仿真开始时间
 	timeStart = clock();
-   for(j=0;j<10;j++)
-   {
-	
-   	LU_SymbolicSymG(&A,&U);
-   	LU_NumbericSymG(&A,&U);
-	
-  	 for(i=0; i<nsize; i++)
-   	{
-     	 LE_FBackwardSym(&U,B[i].pdVal,X[i].pdVal);
-   	}
-  }
-   // 获取仿真结束时间
+	 for(j=0;j<10;j++)
+	 {
+
+	 	LU_SymbolicSymG(&A,&U);
+	 	LU_NumbericSymG(&A,&U);
+
+		 for(i=0; i<nsize; i++)
+	 	{
+		 	 LE_FBackwardSym(&U,B[i].pdVal,X[i].pdVal);
+	 	}
+	}
+	 // 获取仿真结束时间
 	timeEnd = clock();
 	// 仿真过程花费时间
 	delapseTime = (double)(timeEnd - timeStart)/CLOCKS_PER_SEC;
 	printf("The program elapsed %13.8f s\n",delapseTime);
 
-   //添加打印结果相量的代码
-   printf("Begin Print Result...\n");
-   WriteVectorX(X,nsize,"X1.txt");
-   printf("Print Result finish!\n");
-   ////////////////////////
-    //初始化X数组
-   Reference=new VecRealStru[nsize];
-   for(i=0; i<nsize;i++)
-   {
-      initMem_VecReal(&Reference[i]);
-      Reference[i].iNy=B[i].iNy;
-      allocate_VecReal(&Reference[i]);
-   }
-	
-   CompareVectorX(Reference,nsize,X);
-   deallocate_MatReal(&A);
-   deallocate_UMatReal(&U);
-   for(i=0; i<nsize; i++)
-   {
-      deallocate_VecReal(&B[i]);
-      deallocate_VecReal(&X[i]);
-   }
-   delete[] X;
-   delete[] B;
-   delete[] Reference;
-   //getchar();
+	 //添加打印结果相量的代码
+	 printf("Begin Print Result...\n");
+	 WriteVectorX(X,nsize,"X1.txt");
+	 printf("Print Result finish!\n");
+	 ////////////////////////
+		//初始化X数组
+	 Reference=new VecRealStru[nsize];
+	 for(i=0; i<nsize;i++)
+	 {
+			initMem_VecReal(&Reference[i]);
+			Reference[i].iNy=B[i].iNy;
+			allocate_VecReal(&Reference[i]);
+	 }
+
+	 CompareVectorX(Reference,nsize,X);
+	 deallocate_MatReal(&A);
+	 deallocate_UMatReal(&U);
+	 for(i=0; i<nsize; i++)
+	 {
+			deallocate_VecReal(&B[i]);
+			deallocate_VecReal(&X[i]);
+	 }
+	 delete[] X;
+	 delete[] B;
+	 delete[] Reference;
+	 //getchar();
 	return 0;
 }
 
