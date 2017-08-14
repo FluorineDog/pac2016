@@ -17,14 +17,14 @@
 #define _LE_SYMSPRSMATDEF_H__
 
 #include <stdio.h>
-
+#include <mkl.h>
 // 稀疏二维全矩阵结构
 typedef struct  
 {
 
 	int iDim       ; // 矩阵维数。（MAXN）
 
-	int iNy        ; // 矩阵元素实际数目。（NY1、NU）
+	int iNy        ; // 矩阵元素实际数目。（NY1、NU）	 
 
 	int iNymax     ; // 矩阵元素最大数目,iNy = iDim*(iDim+1)/2，分配维数时使用
 
@@ -68,13 +68,21 @@ typedef struct
 //LU分解后的U阵值描述
 typedef struct
 {
-	SprsUMatStru uMax;  //矩阵结构
-	double *d_u;  //分解后对角元值,iDim+1维
-	double *u_u;  //上三角元素值(行向),已归一化,iNzs+1维
+	// SprsUMatStru uMax;  //矩阵结构
+	// double *d_u;  //分解后对角元值,iDim+1维
+	// double *u_u;  //上三角元素值(行向),已归一化,iNzs+1维
 
-	//以下两个数组为LU数值分解时所需要的工作数组
-	int    *nzs;  //工作数组 iDim+1
-	double *work; //工作数组 iDim+1
+	// 以下两个数组为LU数值分解时所需要的工作数组
+	// int    *nzs;  //工作数组 iDim+1
+	// double *work; //工作数组 iDim+1
+	MKL_INT n; 						// dimensions 
+	void* pt[64]; 				// working array
+	MKL_INT mtype;	
+	MKL_INT iparm[64];		// parameter array
+	MKL_INT maxfct, mnum, phase, error, msglvl;  //control para
+	MKL_INT nrhs; 				/// right-side number
+	double ddum;
+	MKL_INT idum;
 } SprsUMatRealStru;
 
 #endif
