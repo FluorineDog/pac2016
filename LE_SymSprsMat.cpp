@@ -16,6 +16,7 @@
 //////////////////////////////////////////////////////////////////////
 #include <iostream>
 #include <math.h>
+#include <mkl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -128,15 +129,49 @@ void deallocate_VecReal(VecRealStru *V) {
 
 // 输入参数:          // G阵结构
 // 输出参数:          // U阵结构,并申请U阵内存，包括工作相量
-void LU_SymbolicSymG(SprsMatRealStru *pG, SprsUMatRealStru *pFU) {}
+void LU_SymbolicSymG(SprsMatRealStru *pG, SprsUMatRealStru *U) {
+  int phase = 11; // symbolic analysis
+  double ddum;
+  MKL_INT idum;
+  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, &pG->pdVal,
+          &pG->Mat.piIstart, &pG->Mat.piJno, &idum, &U->nrhs, U->iparm,
+          &U->msglvl, &ddum, &ddum, &U->error);
+  if (U->error) {
+    fprintf(stderr, "symblicSymG failed: %d", U->error);
+    exit(-1);
+  }
+}
 
 // 输入参数:          // G阵结构及G阵值
 // 输出参数:          // U阵中的值
-void LU_NumbericSymG(SprsMatRealStru *pG, SprsUMatRealStru *pFU) {}
+void LU_NumbericSymG(SprsMatRealStru *pG, SprsUMatRealStru *U) {
+  int phase = 22;
+  double ddum;
+  MKL_INT idum;
+  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, &pG->pdVal,
+          &pG->Mat.piIstart, &pG->Mat.piJno, &idum, &U->nrhs, U->iparm,
+          &U->msglvl, &ddum, &ddum, &U->error);
+  if (U->error) {
+    fprintf(stderr, "%s failed: %d", __FUNCTION__, U->error);
+    exit(-2);
+  }
+}
 
 // 输入参数:          // U阵结构及U阵值，右端项b
 // 输出参数:          // 右端项x，维数为pU的维数（解向量）
-void LE_FBackwardSym(SprsUMatRealStru *pFU, double b[], double x[]) {}
+void LE_FBackwardSym(SprsUMatRealStru *U, double b[], double x[]) {
+  int phase = 33;
+  double ddum;
+  MKL_INT idum;
+  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, &ddum,
+          &idum, &idum, &idum, &U->nrhs, U->iparm,
+          &U->msglvl, b, x, &U->error);
+  if (U->error) {
+    fprintf(stderr, "%s failed: %d", __FUNCTION__, U->error);
+    exit(-3);
+  }
+
+}
 
 // 描    述:          //内存初始化。数目、指针变量置零
 // 输入参数:          // U
@@ -169,8 +204,8 @@ void initMem_UMatReal(SprsUMatRealStru *U) {
   U->iparm[18] = -1; /* Output: Mflops for LU factorization */
   U->iparm[19] = 0;  /* Output: Numbers of CG Iterations */
   U->iparm[34] = 1;  // zero based indexing
-  U->mtype = -2;      /* Real symmetric matrix */
-  U->nrhs = 1;     /* Number of right hand sides. */
+  U->mtype = -2;     /* Real symmetric matrix */
+  U->nrhs = 1;       /* Number of right hand sides. */
   U->maxfct = 1;     /* Maximum number of numerical factorizations. */
   U->mnum = 1;       /* Which factorization to use. */
   U->msglvl = 1;     /* Print statistical information in file */
@@ -180,7 +215,7 @@ void initMem_UMatReal(SprsUMatRealStru *U) {
   /* necessary for the FIRST call of the PARDISO solver. */
   /* -------------------------------------------------------------------- */
   for (int i = 0; i < 64; i++) {
-    U->pt[i] = 0;
+    U->pt[i] = nullptr;
   }
 }
 
@@ -189,9 +224,10 @@ void initMem_UMatReal(SprsUMatRealStru *U) {
 // 输入参数:          // U
 //////////////////////////////////////////////////////////////////////
 void deallocate_UMatReal(SprsUMatRealStru *U) {
-  int phase = -1; // termination and release 
-  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, &U->ddum,
-          &U->idum, &U->idum, &U->idum, &U->nrhs, U->iparm, &U->msglvl,
-          &U->ddum, &U->ddum, &U->error);
-  );
+  int phase = -1; // termination and release
+  double ddum;
+  MKL_INT idum;
+  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, &ddum, &idum,
+          &idum, &idum, &U->nrhs, U->iparm, &U->msglvl, &ddum, &ddum,
+          &U->error);
 }
