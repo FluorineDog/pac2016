@@ -133,8 +133,8 @@ void LU_SymbolicSymG(SprsMatRealStru *pG, SprsUMatRealStru *U) {
   int phase = 11; // symbolic analysis
   double ddum;
   MKL_INT idum;
-  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, &pG->pdVal,
-          &pG->Mat.piIstart, &pG->Mat.piJno, &idum, &U->nrhs, U->iparm,
+  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, pG->pdVal,
+          pG->Mat.piIstart, pG->Mat.piJno, &idum, &U->nrhs, U->iparm,
           &U->msglvl, &ddum, &ddum, &U->error);
   if (U->error) {
     fprintf(stderr, "symblicSymG failed: %d", U->error);
@@ -148,8 +148,8 @@ void LU_NumbericSymG(SprsMatRealStru *pG, SprsUMatRealStru *U) {
   int phase = 22;
   double ddum;
   MKL_INT idum;
-  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, &pG->pdVal,
-          &pG->Mat.piIstart, &pG->Mat.piJno, &idum, &U->nrhs, U->iparm,
+  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, pG->pdVal,
+          pG->Mat.piIstart, pG->Mat.piJno, &idum, &U->nrhs, U->iparm,
           &U->msglvl, &ddum, &ddum, &U->error);
   if (U->error) {
     fprintf(stderr, "%s failed: %d", __FUNCTION__, U->error);
