@@ -77,9 +77,9 @@ void initMem_VecReal(VecRealStru *V) {
 void allocate_MatReal(SprsMatRealStru *A) {
   int dimension = 0;
   int n = 0;
-  cerr << "iDim: " << A->Mat.iDim << endl;
-  cerr << "iNymax: " << A->Mat.iNymax << endl;
-  cerr << "iNy: " << A->Mat.iNy << endl;
+  // cerr << "iDim: " << A->Mat.iDim << endl;
+  // cerr << "iNymax: " << A->Mat.iNymax << endl;
+  // cerr << "iNy: " << A->Mat.iNy << endl;
   dimension = A->Mat.iDim + 1;
   A->Mat.iNymax = dimension * (dimension + 1) / 2; // 矩阵元素最大数目
   n = A->Mat.iNymax + 1;
@@ -130,14 +130,22 @@ void deallocate_VecReal(VecRealStru *V) {
 // 输入参数:          // G阵结构
 // 输出参数:          // U阵结构,并申请U阵内存，包括工作相量
 void LU_SymbolicSymG(SprsMatRealStru *pG, SprsUMatRealStru *U) {
+  // cerr << "fucking " << __FUNCTION__ << endl;
+  U->n = pG->Mat.iDim + 1;
+ 
+  // cerr << U->n << endl; 
   int phase = 11; // symbolic analysis
   double ddum;
   MKL_INT idum;
-  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, pG->pdVal,
-          pG->Mat.piIstart, pG->Mat.piJno, &idum, &U->nrhs, U->iparm,
+  U->a = pG->pdVal;
+  U->ia = pG->Mat.piIstart;
+  U->ja = pG->Mat.piJno;
+  pG->pdVal[0] = 1.0;
+  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, U->a,
+          U->ia, U->ja, &idum, &U->nrhs, U->iparm,
           &U->msglvl, &ddum, &ddum, &U->error);
   if (U->error) {
-    fprintf(stderr, "symblicSymG failed: %d", U->error);
+    fprintf(stderr, "%s failed: %d", __FUNCTION__,  U->error);
     exit(-1);
   }
 }
@@ -145,6 +153,7 @@ void LU_SymbolicSymG(SprsMatRealStru *pG, SprsUMatRealStru *U) {
 // 输入参数:          // G阵结构及G阵值
 // 输出参数:          // U阵中的值
 void LU_NumbericSymG(SprsMatRealStru *pG, SprsUMatRealStru *U) {
+  // cerr << "fucking " << __FUNCTION__ << endl;
   int phase = 22;
   double ddum;
   MKL_INT idum;
@@ -160,11 +169,12 @@ void LU_NumbericSymG(SprsMatRealStru *pG, SprsUMatRealStru *U) {
 // 输入参数:          // U阵结构及U阵值，右端项b
 // 输出参数:          // 右端项x，维数为pU的维数（解向量）
 void LE_FBackwardSym(SprsUMatRealStru *U, double b[], double x[]) {
+  cerr << "fucking " << __FUNCTION__ << endl;
   int phase = 33;
   double ddum;
   MKL_INT idum;
-  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, &ddum,
-          &idum, &idum, &idum, &U->nrhs, U->iparm,
+  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, U->a,
+          U->ia, U->ja, &idum, &U->nrhs, U->iparm,
           &U->msglvl, b, x, &U->error);
   if (U->error) {
     fprintf(stderr, "%s failed: %d", __FUNCTION__, U->error);
@@ -183,15 +193,15 @@ void initMem_UMatReal(SprsUMatRealStru *U) {
     U->iparm[i] = 0;
   }
   U->iparm[0] = 1;   /* No solver default */
-  U->iparm[1] = 2;   /* Fill-in reordering from METIS */
-  U->iparm[3] = 0;   /* No iterative-direct algorithm */
+  U->iparm[1] = 0;   /* Fill-in reordering from METIS */
+  U->iparm[3] = 2;   /* No iterative-direct algorithm */
   U->iparm[4] = 0;   /* No user fill-in reducing permutation */
   U->iparm[5] = 0;   /* Write solution into x */
   U->iparm[6] = 0;   /* Not in use */
   U->iparm[7] = 2;   /* Max numbers of iterative refinement steps */
   U->iparm[8] = 0;   /* Not in use */
   U->iparm[9] = 13;  /* Perturb the pivot elements with 1E-13 */
-  U->iparm[10] = 1;  /* Use nonsymmetric permutation and scaling MPS */
+  U->iparm[10] = 0;  /* Use nonsymmetric permutation and scaling MPS */
   U->iparm[11] = 0;  /* Not in use */
   U->iparm[12] = 0;  /* Maximum weighted matching algorithm is switched-off
                         (default for symmetric). Try iparm[12] = 1 in case of
@@ -200,8 +210,8 @@ void initMem_UMatReal(SprsUMatRealStru *U) {
   U->iparm[14] = 0;  /* Not in use */
   U->iparm[15] = 0;  /* Not in use */
   U->iparm[16] = 0;  /* Not in use */
-  U->iparm[17] = -1; /* Output: Number of nonzeros in the factor LU */
-  U->iparm[18] = -1; /* Output: Mflops for LU factorization */
+  U->iparm[17] = 0;  /* Output: Number of nonzeros in the factor LU */
+  U->iparm[18] = 0;  /* Output: Mflops for LU factorization */
   U->iparm[19] = 0;  /* Output: Numbers of CG Iterations */
   U->iparm[34] = 1;  // zero based indexing
   U->mtype = -2;     /* Real symmetric matrix */
@@ -227,7 +237,7 @@ void deallocate_UMatReal(SprsUMatRealStru *U) {
   int phase = -1; // termination and release
   double ddum;
   MKL_INT idum;
-  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, &ddum, &idum,
-          &idum, &idum, &U->nrhs, U->iparm, &U->msglvl, &ddum, &ddum,
+  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, U->a, U->ia,
+          U->ja, &idum, &U->nrhs, U->iparm, &U->msglvl, &ddum, &ddum,
           &U->error);
 }

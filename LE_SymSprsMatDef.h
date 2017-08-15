@@ -81,6 +81,9 @@ typedef struct
 	MKL_INT iparm[64];		// parameter array
 	MKL_INT maxfct, mnum, phase, error, msglvl;  //control para
 	MKL_INT nrhs; 				/// right-side number
+	double *a; 
+	MKL_INT *ia;
+	MKL_INT *ja;	
 	// double ddum;
 	// MKL_INT idum;
 } SprsUMatRealStru;
