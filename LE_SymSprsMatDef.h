@@ -82,6 +82,7 @@ typedef struct
 	MKL_INT maxfct, mnum, phase, error, msglvl;  //control para
 	MKL_INT nrhs; 				/// right-side number
 	double *a; 
+	MKL_INT* perm;
 	MKL_INT *ia;
 	MKL_INT *ja;	
 	// double ddum;

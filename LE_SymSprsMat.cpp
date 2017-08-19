@@ -16,6 +16,7 @@
 //////////////////////////////////////////////////////////////////////
 #include <iostream>
 #include <math.h>
+#include <memory>
 #include <mkl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -132,8 +133,8 @@ void deallocate_VecReal(VecRealStru *V) {
 void LU_SymbolicSymG(SprsMatRealStru *pG, SprsUMatRealStru *U) {
   // cerr << "fucking " << __FUNCTION__ << endl;
   U->n = pG->Mat.iDim + 1;
- 
-  // cerr << U->n << endl; 
+
+  // cerr << U->n << endl;
   int phase = 11; // symbolic analysis
   double ddum;
   MKL_INT idum;
@@ -141,11 +142,11 @@ void LU_SymbolicSymG(SprsMatRealStru *pG, SprsUMatRealStru *U) {
   U->ia = pG->Mat.piIstart;
   U->ja = pG->Mat.piJno;
   pG->pdVal[0] = 1.0;
-  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, U->a,
-          U->ia, U->ja, &idum, &U->nrhs, U->iparm,
-          &U->msglvl, &ddum, &ddum, &U->error);
+  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, U->a, U->ia,
+          U->ja, U->perm, &U->nrhs, U->iparm, &U->msglvl, &ddum, &ddum,
+          &U->error);
   if (U->error) {
-    fprintf(stderr, "%s failed: %d", __FUNCTION__,  U->error);
+    fprintf(stderr, "%s failed: %d", __FUNCTION__, U->error);
     exit(-1);
   }
 }
@@ -158,7 +159,7 @@ void LU_NumbericSymG(SprsMatRealStru *pG, SprsUMatRealStru *U) {
   double ddum;
   MKL_INT idum;
   PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, pG->pdVal,
-          pG->Mat.piIstart, pG->Mat.piJno, &idum, &U->nrhs, U->iparm,
+          pG->Mat.piIstart, pG->Mat.piJno, U->perm, &U->nrhs, U->iparm,
           &U->msglvl, &ddum, &ddum, &U->error);
   if (U->error) {
     fprintf(stderr, "%s failed: %d", __FUNCTION__, U->error);
@@ -169,18 +170,24 @@ void LU_NumbericSymG(SprsMatRealStru *pG, SprsUMatRealStru *U) {
 // 输入参数:          // U阵结构及U阵值，右端项b
 // 输出参数:          // 右端项x，维数为pU的维数（解向量）
 void LE_FBackwardSym(SprsUMatRealStru *U, double b[], double x[]) {
-  cerr << "fucking " << __FUNCTION__ << endl;
+  // cerr << "fucking " << __FUNCTION__ << endl;
   int phase = 33;
   double ddum;
   MKL_INT idum;
-  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, U->a,
-          U->ia, U->ja, &idum, &U->nrhs, U->iparm,
-          &U->msglvl, b, x, &U->error);
+  // for (int i = 0; i < 10; ++i) {
+    // cerr << b[i] << endl;
+  // }
+  // cerr << "-----------------------" << endl;
+  // for (int i = U->n - 10; i < U->n; ++i) {
+    // cerr << b[i] << endl;
+  // }
+
+  PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, U->a, U->ia,
+          U->ja, U->perm , &U->nrhs, U->iparm, &U->msglvl, b, x, &U->error);
   if (U->error) {
     fprintf(stderr, "%s failed: %d", __FUNCTION__, U->error);
     exit(-3);
   }
-
 }
 
 // 描    述:          //内存初始化。数目、指针变量置零
@@ -192,34 +199,34 @@ void initMem_UMatReal(SprsUMatRealStru *U) {
   for (int i = 0; i < 64; i++) {
     U->iparm[i] = 0;
   }
-  U->iparm[0] = 1;   /* No solver default */
-  U->iparm[1] = 0;   /* Fill-in reordering from METIS */
-  U->iparm[3] = 2;   /* No iterative-direct algorithm */
-  U->iparm[4] = 0;   /* No user fill-in reducing permutation */
-  U->iparm[5] = 0;   /* Write solution into x */
-  U->iparm[6] = 0;   /* Not in use */
-  U->iparm[7] = 2;   /* Max numbers of iterative refinement steps */
-  U->iparm[8] = 0;   /* Not in use */
-  U->iparm[9] = 13;  /* Perturb the pivot elements with 1E-13 */
-  U->iparm[10] = 0;  /* Use nonsymmetric permutation and scaling MPS */
-  U->iparm[11] = 0;  /* Not in use */
-  U->iparm[12] = 0;  /* Maximum weighted matching algorithm is switched-off
-                        (default for symmetric). Try iparm[12] = 1 in case of
-                        inappropriate accuracy */
-  U->iparm[13] = 0;  /* Output: Number of perturbed pivots */
-  U->iparm[14] = 0;  /* Not in use */
-  U->iparm[15] = 0;  /* Not in use */
-  U->iparm[16] = 0;  /* Not in use */
-  U->iparm[17] = 0;  /* Output: Number of nonzeros in the factor LU */
-  U->iparm[18] = 0;  /* Output: Mflops for LU factorization */
-  U->iparm[19] = 0;  /* Output: Numbers of CG Iterations */
-  U->iparm[34] = 1;  // zero based indexing
-  U->mtype = -2;     /* Real symmetric matrix */
-  U->nrhs = 1;       /* Number of right hand sides. */
-  U->maxfct = 1;     /* Maximum number of numerical factorizations. */
-  U->mnum = 1;       /* Which factorization to use. */
-  U->msglvl = 1;     /* Print statistical information in file */
-  U->error = 0;      /* Initialize error flag */
+  U->iparm[0] = 1;  /* No solver default */
+  U->iparm[1] = 0;  /* Fill-in reordering from METIS */
+  U->iparm[3] = 2;  /* No iterative-direct algorithm */
+  U->iparm[4] = 0;  /* No user fill-in reducing permutation */
+  U->iparm[5] = 0;  /* Write solution into x */
+  U->iparm[6] = 0;  /* Not in use */
+  U->iparm[7] = 2;  /* Max numbers of iterative refinement steps */
+  U->iparm[8] = 0;  /* Not in use */
+  U->iparm[9] = 13; /* Perturb the pivot elements with 1E-13 */
+  U->iparm[10] = 0; /* Use nonsymmetric permutation and scaling MPS */
+  U->iparm[11] = 0; /* Not in use */
+  U->iparm[12] = 0; /* Maximum weighted matching algorithm is switched-off
+                       (default for symmetric). Try iparm[12] = 1 in case of
+                       inappropriate accuracy */
+  U->iparm[13] = 0; /* Output: Number of perturbed pivots */
+  U->iparm[14] = 0; /* Not in use */
+  U->iparm[15] = 0; /* Not in use */
+  U->iparm[16] = 0; /* Not in use */
+  U->iparm[17] = 0; /* Output: Number of nonzeros in the factor LU */
+  U->iparm[18] = 0; /* Output: Mflops for LU factorization */
+  U->iparm[19] = 0; /* Output: Numbers of CG Iterations */
+  U->iparm[34] = 1; // zero based indexing
+  U->mtype = -2;    /* Real symmetric matrix */
+  U->nrhs = 1;      /* Number of right hand sides. */
+  U->maxfct = 1;    /* Maximum number of numerical factorizations. */
+  U->mnum = 1;      /* Which factorization to use. */
+  U->msglvl = 1;    /* Print statistical information in file */
+  U->error = 0;     /* Initialize error flag */
   /* -------------------------------------------------------------------- */
   /*  Initialize the internal solver memory pointer. This is only       */
   /* necessary for the FIRST call of the PARDISO solver. */
@@ -227,6 +234,7 @@ void initMem_UMatReal(SprsUMatRealStru *U) {
   for (int i = 0; i < 64; i++) {
     U->pt[i] = nullptr;
   }
+  U->perm = new MKL_INT[3125];
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -237,6 +245,7 @@ void deallocate_UMatReal(SprsUMatRealStru *U) {
   int phase = -1; // termination and release
   double ddum;
   MKL_INT idum;
+  delete [] U->perm;
   PARDISO(U->pt, &U->maxfct, &U->mnum, &U->mtype, &phase, &U->n, U->a, U->ia,
           U->ja, &idum, &U->nrhs, U->iparm, &U->msglvl, &ddum, &ddum,
           &U->error);

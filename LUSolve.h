@@ -322,7 +322,8 @@ int CompareVectorX(VecRealStru *X, int &nsize, VecRealStru *result) {
   if (0 > ReadVectorX(X, nsize, "X.txt")) {
     return -1;
   }
-
+   
+  
   for (i = 0; i < nsize; i++) {
     for (j = 0; j < X[i].iNy + 1; j++) {
       if ((X[i].pdVal[j] - result[i].pdVal[j] > 1e-9) ||
@@ -334,6 +335,7 @@ int CompareVectorX(VecRealStru *X, int &nsize, VecRealStru *result) {
       }
     }
   }
+
   if (num > 0) {
     printf(
         " result exceed the set reference value  %d,please see the log.txt\n",

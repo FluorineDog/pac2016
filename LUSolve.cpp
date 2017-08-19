@@ -1,4 +1,8 @@
 #include "LUSolve.h"
+#include <iostream> 
+using std::cout;
+using std::cerr;
+using std::endl;
 
 int main(int argc, const char *argv[]) {
   unsigned long long timeStart; // 仿真开始时间
@@ -55,9 +59,10 @@ int main(int argc, const char *argv[]) {
   {
     LU_SymbolicSymG(&A, &U);
     LU_NumbericSymG(&A, &U);
-
+    cerr << "h";
     for (i = 0; i < nsize; i++) {
-      for (j = 0; j < 1000; j++) {
+      for (j = 0; j < 1; j++) {
+        cerr << "fuck";
         LE_FBackwardSym(&U, B[i].pdVal, X[i].pdVal);
       }
     }
@@ -66,16 +71,13 @@ int main(int argc, const char *argv[]) {
     //	timeEnd = clock();  //modify by wsh 2017.7.31
   }
   timeEnd = rdtsc();
-  // 仿真过程花费时间
-  //	delapseTime = (double)(timeEnd - timeStart)/CLOCKS_PER_SEC;//modify by
-  // wsh 2017.7.31
   delapseTime = (double)(timeEnd - timeStart) / (F * Time);
 
   printf("The program elapsed %13.8f s\n", delapseTime);
 
   //添加打印结果相量的代码
-  printf("Begin Print Result...\n");
-  WriteVectorX(X, nsize, "X1.txt");
+  printf("Begin Print Result...(disabled)\n");
+  // WriteVectorX(X, nsize, "X1.txt");
   printf("Print Result finish!\n");
   ////////////////////////
   //初始化X数组
