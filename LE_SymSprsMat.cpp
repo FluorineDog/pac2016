@@ -29,8 +29,8 @@ using std::endl;
 inline void ensure(MKL_INT ret, int line, const char* func) {
   if (ret != MKL_DSS_SUCCESS) {
     cerr << "error code:" << ret << endl;
-    cerr << "  at line:" << line << endl;
-    cerr << "  in function" << func << endl;
+    cerr << "  at line: " << line << endl;
+    cerr << "  in function: " << func << endl;
     exit(-1);
   }
 }
