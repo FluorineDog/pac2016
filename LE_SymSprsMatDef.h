@@ -68,25 +68,7 @@ typedef struct
 //LU分解后的U阵值描述
 typedef struct
 {
-	// SprsUMatStru uMax;  //矩阵结构
-	// double *d_u;  //分解后对角元值,iDim+1维
-	// double *u_u;  //上三角元素值(行向),已归一化,iNzs+1维
-
-	// 以下两个数组为LU数值分解时所需要的工作数组
-	// int    *nzs;  //工作数组 iDim+1
-	// double *work; //工作数组 iDim+1
-	MKL_INT n; 						// dimensions 
-	void* pt[64]; 				// working array
-	MKL_INT mtype;	
-	MKL_INT iparm[64];		// parameter array
-	MKL_INT maxfct, mnum, phase, error, msglvl;  //control para
-	MKL_INT nrhs; 				/// right-side number
-	double *a; 
-	MKL_INT* perm;
-	MKL_INT *ia;
-	MKL_INT *ja;	
-	// double ddum;
-	// MKL_INT idum;
+	_MKL_DSS_HANDLE_t handle;
 } SprsUMatRealStru;
 
 #endif

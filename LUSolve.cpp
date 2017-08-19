@@ -59,10 +59,10 @@ int main(int argc, const char *argv[]) {
   {
     LU_SymbolicSymG(&A, &U);
     LU_NumbericSymG(&A, &U);
-    cerr << "h";
+    // cerr << "h";
     for (i = 0; i < nsize; i++) {
       for (j = 0; j < 1; j++) {
-        cerr << "fuck";
+        // cerr << "fuck";
         LE_FBackwardSym(&U, B[i].pdVal, X[i].pdVal);
       }
     }
@@ -76,8 +76,8 @@ int main(int argc, const char *argv[]) {
   printf("The program elapsed %13.8f s\n", delapseTime);
 
   //添加打印结果相量的代码
-  printf("Begin Print Result...(disabled)\n");
-  // WriteVectorX(X, nsize, "X1.txt");
+  printf("Begin Print Result...(enabled)\n");
+  WriteVectorX(X, nsize, "X1.txt");
   printf("Print Result finish!\n");
   ////////////////////////
   //初始化X数组
