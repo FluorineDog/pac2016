@@ -39,7 +39,7 @@ extern void allocate_VecReal(VecRealStru *V);
 extern void deallocate_VecReal(VecRealStru *V);
 
 // 稀疏矩阵加链
-extern void SparseMatrix_adlink(SprsMatRealStru *pA);
+// extern void SparseMatrix_adlink(SprsMatRealStru *pA);
 // 内存初始化。数目、指针变量置零
 extern void initMem_UMatReal(SprsUMatRealStru *U);
 // 指针变量内存释放
