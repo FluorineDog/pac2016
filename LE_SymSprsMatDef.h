@@ -49,7 +49,7 @@ typedef struct
 typedef struct
 {
     int iDim;           //矩阵维数
-    int iNzs;           //上三角（不包括对角元)的非零元素个数
+    int iNzs;           //上三角（不包括对角元）的非零元素个数
     int *rs_u;          //上三角行向开始位置,iDim+2
     int *cs_u;          //上三角列向开始位置,iDim+2
     int *r_u;           //上三角列向元素行号,iNzs+1

@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "omp.h"
 
 #include "LE_SymSprsMatFunc.h"
 #include "LE_SymSprsMatDef.h"
@@ -574,6 +575,24 @@ void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
 
         d_u[i] = dk;
     }
+
+    //printf("%d\n", pFU->uMax.iNzs);
+    j = 0;                          // the new array counter
+    p = rs_u[1];                    // init rs_u[n+1]
+    rs_u[1] = 0;
+    for(i = 1; i <= iDim; ++i) {
+        m = p;
+        n = rs_u[i + 1];                      // n <- p (last rs_u[n+1])
+
+        for(k = m; k < n; ++k) {
+            u_u[j] = u_u[k];
+            j_u[j] = j_u[k];
+            if(u_u[j] != 0.0)
+                j++;
+        }
+        p = rs_u[i + 1];            // store rs_u[i+1] -> p
+        rs_u[i + 1] = j;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -587,7 +606,7 @@ void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
 //////////////////////////////////////////////////////////////////////
 void LE_FBackwardSym(SprsUMatRealStru *pFU,double b[],double x[])
 {
-    int i,j,k;
+    int i,j,k, r;
     int ks,ke;
     int iDim;
     int *rs_u,*j_u;
@@ -600,9 +619,16 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU,double b[],double x[])
     j_u = pFU->uMax.j_u;          // 行向元素列号
     iDim = pFU->uMax.iDim;        // 维数
 
+    //for(int i=0; i<iDim; ++i){
+    //    ks = rs_u[i];
+    //    ke = rs_u[i+1];
 
+    //    printf("%d", ks);
+    //    for(k = ks; k < ke; k ++)
+    //        printf("%15le %d", u_u[k], j_u[k]);
+    //}
     // 解Ux=b
-    #pragma omp parallel for
+    #pragma omp parallel for private(i) shared(x, b)
     for(i = 1; i <= iDim; i++)  // x <- b
         x[i] = b[i];
 
@@ -612,14 +638,13 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU,double b[],double x[])
         ks = rs_u[i];
         ke = rs_u[i+1];
 
-        #pragma omp parallel for
         for(k = ks; k < ke; k ++)
         {
             x[j_u[k]] -= u_u[k] * xc;
         }
     }
 
-    #pragma omp parallel for
+    #pragma omp parallel for private(i) shared(x, d_u)
     for(i=1; i<=iDim; i++)
         x[i] /= d_u[i];
 
@@ -629,10 +654,10 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU,double b[],double x[])
         ke = rs_u[i+1] - 1;
         xc = x[i];
 
-        #pragma omp parallel for
+        //#pragma omp parallel for reduction(-:xc) private(k) shared(u_u, j_u, x)
         for(k=ke; k>=ks; k--)
         {
-            xc -= u_u[k]*x[j_u[k]];
+            xc -= u_u[k] * x[j_u[k]];
         }
         x[i] = xc;
     }
