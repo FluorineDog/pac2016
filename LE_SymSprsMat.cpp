@@ -530,16 +530,18 @@ void LU_NumbericSymG(SprsMatRealStru *pG, SprsUMatRealStru *pFU) {
       dk = -1.0e-20;
     d_u[i] = dk;
   }
+  for(int i = 1; i <= iDim; ++i){
+    d_u[i] = 1 / d_u[i];
+  }
 }
-
 // 输入参数:          // U阵结构及U阵值，右端项b
 // 输出参数:          // 右端项x，维数为pU的维数（解向量）
 void LE_FBackwardSym(SprsUMatRealStru *pFU, double b[], double x[]) {
-  int ks, ke;
+  // int kbeg, kend;
   int iDim;
   int *rs_u, *j_u;
   double *d_u, *u_u;
-  double xc;
+  // double xc;
 
   d_u = pFU->d_u;
   u_u = pFU->u_u;
@@ -551,25 +553,33 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double b[], double x[]) {
     x[i] = b[i];
 
   for (int i = 1; i <= iDim; i++) {
-    xc = x[i];
-    ks = rs_u[i];
-    ke = rs_u[i + 1];
+    double xc = x[i];
+    int kbeg = rs_u[i];
+    int kend = rs_u[i + 1];
 
-    for (int k = ks; k < ke; k++) {
+    for (int k = kbeg; k < kend; k++) {
       int j = j_u[k];
-      x[j] -= u_u[k] * xc;
+      // serious cache miss
+      // nooooooooo
+      // 3 read is not avoidable
+      // better idea?
+      x[j] -= u_u[k] * xc;     
     }
   }
 
-  for (int i = 1; i <= iDim; i++)
-    x[i] /= d_u[i]; // auto vectorized
+#pragma omp parallel for
+#pragma vector always
+#pragma ivdep
+  for (int i = 1; i <= iDim; i++){
+    x[i] *= d_u[i]; // auto vectorized
+  }
 
   for (int i = iDim - 1; i >= 1; i--) {
-    ks = rs_u[i];
-    ke = rs_u[i + 1] - 1;
-    xc = x[i];
+    int kbeg = rs_u[i];
+    int kend = rs_u[i + 1] - 1;
+    double xc = x[i];
 
-    for (int k = ke; k >= ks; k--) {
+    for (int k = kend; k >= kbeg; k--) {
       int j = j_u[k];
       xc -= u_u[k] * x[j];
     }
