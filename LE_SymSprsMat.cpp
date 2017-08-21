@@ -1,15 +1,15 @@
 //////////////////////////////////////////////////////////////////////
-// ç‰ˆæƒ (C), 1988-1999, ä¸­å›½ç”µåŠ›ç§‘å­¦ç ”ç©¶é™¢
-// æ–‡ ä»¶ å: LE_SymSprsMat.c
-// ç‰ˆæœ¬: V1.0       æ—¶é—´: 2014.12.31
-// æ    è¿°: çº¿æ€§æ–¹ç¨‹ç»„æ¨¡å—  
-//           åŒ…å«LE_SymSprsMatFunc.hå£°æ˜çš„æ‰€æœ‰å­ç¨‹åº
-// å…¶    ä»–ï¼šç”¨ #include <filename.h> æ ¼å¼æ¥å¼•ç”¨æ ‡å‡†åº“çš„å¤´æ–‡ä»¶ï¼ˆç¼–è¯‘å™¨å°†ä»æ ‡å‡†åº“ç›®å½•å¼€å§‹æœç´¢ï¼‰
-//           ç”¨ #include "filename.h" æ ¼å¼æ¥å¼•ç”¨éæ ‡å‡†åº“çš„å¤´æ–‡ä»¶ï¼ˆç¼–è¯‘å™¨å°†ä»ç”¨æˆ·çš„å·¥ä½œç›®å½•å¼€å§‹æœç´¢ï¼‰
-// ä¿®æ”¹è®°å½•:       // å†å²ä¿®æ”¹è®°å½•
-// 1. æ—¶é—´:
-//    ä½œè€…:
-//    ä¿®æ”¹å†…å®¹:
+// °æÈ¨ (C), 1988-1999, ÖĞ¹úµçÁ¦¿ÆÑ§ÑĞ¾¿Ôº
+// ÎÄ ¼ş Ãû: LE_SymSprsMat.c
+// °æ±¾: V1.0       Ê±¼ä: 2014.12.31
+// Ãè    Êö: ÏßĞÔ·½³Ì×éÄ£¿é
+//           °üº¬LE_SymSprsMatFunc.hÉùÃ÷µÄËùÓĞ×Ó³ÌĞò
+// Æä    Ëû£ºÓÃ #include <filename.h> ¸ñÊ½À´ÒıÓÃ±ê×¼¿âµÄÍ·ÎÄ¼ş£¨±àÒëÆ÷½«´Ó±ê×¼¿âÄ¿Â¼¿ªÊ¼ËÑË÷£©
+//           ÓÃ #include "filename.h" ¸ñÊ½À´ÒıÓÃ·Ç±ê×¼¿âµÄÍ·ÎÄ¼ş£¨±àÒëÆ÷½«´ÓÓÃ»§µÄ¹¤×÷Ä¿Â¼¿ªÊ¼ËÑË÷£©
+// ĞŞ¸Ä¼ÇÂ¼:       // ÀúÊ·ĞŞ¸Ä¼ÇÂ¼
+// 1. Ê±¼ä:
+//    ×÷Õß:
+//    ĞŞ¸ÄÄÚÈİ:
 // 2. ...
 //////////////////////////////////////////////////////////////////////
 #include <stdio.h>
@@ -21,662 +21,662 @@
 #include "LE_SymSprsMatDef.h"
 
 //////////////////////////////////////////////////////////////////////
-// å‡½ æ•° å:          // initMem_MatReal
-// æ    è¿°:          // ç¨€ç–å…¨å®æ•°çŸ©é˜µå†…å­˜åˆå§‹åŒ–ã€‚æ•°ç›®ã€æŒ‡é’ˆå˜é‡ç½®é›¶
-// è¾“å…¥å‚æ•°:          // è¾“å…¥å‚æ•°è¯´æ˜ï¼ŒåŒ…æ‹¬æ¯ä¸ªå‚æ•°çš„ä½œ
-                      // ç”¨ã€å–å€¼è¯´æ˜åŠå‚æ•°é—´å…³ç³»ã€‚
-                      // å¦‚å‚æ•°éå¸¸å¤æ‚åº”ä¸¾ä¾‹è¯´æ˜ã€‚
-// è¾“å‡ºå‚æ•°:          // å¯¹è¾“å‡ºå‚æ•°çš„è¯´æ˜ã€‚
-// è¿” å› å€¼:          // å‡½æ•°è¿”å›å€¼çš„è¯´æ˜
-// å…¶    ä»–:          // å…¶å®ƒè¯´æ˜
+// º¯ Êı Ãû:          // initMem_MatReal
+// Ãè    Êö:          // Ï¡ÊèÈ«ÊµÊı¾ØÕóÄÚ´æ³õÊ¼»¯¡£ÊıÄ¿¡¢Ö¸Õë±äÁ¿ÖÃÁã
+// ÊäÈë²ÎÊı:          // ÊäÈë²ÎÊıËµÃ÷£¬°üÀ¨Ã¿¸ö²ÎÊıµÄ×÷
+// ÓÃ¡¢È¡ÖµËµÃ÷¼°²ÎÊı¼ä¹ØÏµ¡£
+// Èç²ÎÊı·Ç³£¸´ÔÓÓ¦¾ÙÀıËµÃ÷¡£
+// Êä³ö²ÎÊı:          // ¶ÔÊä³ö²ÎÊıµÄËµÃ÷¡£
+// ·µ »Ø Öµ:          // º¯Êı·µ»ØÖµµÄËµÃ÷
+// Æä    Ëû:          // ÆäËüËµÃ÷
 //////////////////////////////////////////////////////////////////////
 
 void initMem_MatReal(SprsMatRealStru *A)
 {
-	// å†…å­˜åˆå§‹åŒ–ã€‚æ•°ç›®ã€æŒ‡é’ˆå˜é‡ç½®é›¶
-	A->Mat.iDim = 0;
-	A->Mat.iNy = 0;
-	A->Mat.piIdiag = NULL;
-	A->Mat.piIstart = NULL;
-	A->Mat.piJno = NULL;
-	A->Mat.piLinkn = NULL;
-	A->Mat.piLinkp = NULL;
+    // ÄÚ´æ³õÊ¼»¯¡£ÊıÄ¿¡¢Ö¸Õë±äÁ¿ÖÃÁã
+    A->Mat.iDim = 0;
+    A->Mat.iNy = 0;
+    A->Mat.piIdiag = NULL;
+    A->Mat.piIstart = NULL;
+    A->Mat.piJno = NULL;
+    A->Mat.piLinkn = NULL;
+    A->Mat.piLinkp = NULL;
 }
 
 //////////////////////////////////////////////////////////////////////
-// å‡½ æ•° å:          // initMem_VecReal
-// æ    è¿°:          // ç¨€ç–å®æ•°å‘é‡å†…å­˜åˆå§‹åŒ–ã€‚æ•°ç›®ã€æŒ‡é’ˆå˜é‡ç½®é›¶
-// è¾“å…¥å‚æ•°:          // è¾“å…¥å‚æ•°è¯´æ˜ï¼ŒåŒ…æ‹¬æ¯ä¸ªå‚æ•°çš„ä½œ
-                      // ç”¨ã€å–å€¼è¯´æ˜åŠå‚æ•°é—´å…³ç³»ã€‚
-                      // å¦‚å‚æ•°éå¸¸å¤æ‚åº”ä¸¾ä¾‹è¯´æ˜ã€‚
-// è¾“å‡ºå‚æ•°:          // å¯¹è¾“å‡ºå‚æ•°çš„è¯´æ˜ã€‚
-// è¿” å› å€¼:          // å‡½æ•°è¿”å›å€¼çš„è¯´æ˜
-// å…¶    ä»–:          // å…¶å®ƒè¯´æ˜
+// º¯ Êı Ãû:          // initMem_VecReal
+// Ãè    Êö:          // Ï¡ÊèÊµÊıÏòÁ¿ÄÚ´æ³õÊ¼»¯¡£ÊıÄ¿¡¢Ö¸Õë±äÁ¿ÖÃÁã
+// ÊäÈë²ÎÊı:          // ÊäÈë²ÎÊıËµÃ÷£¬°üÀ¨Ã¿¸ö²ÎÊıµÄ×÷
+// ÓÃ¡¢È¡ÖµËµÃ÷¼°²ÎÊı¼ä¹ØÏµ¡£
+// Èç²ÎÊı·Ç³£¸´ÔÓÓ¦¾ÙÀıËµÃ÷¡£
+// Êä³ö²ÎÊı:          // ¶ÔÊä³ö²ÎÊıµÄËµÃ÷¡£
+// ·µ »Ø Öµ:          // º¯Êı·µ»ØÖµµÄËµÃ÷
+// Æä    Ëû:          // ÆäËüËµÃ÷
 //////////////////////////////////////////////////////////////////////
 void initMem_VecReal(VecRealStru *V)
 {
-	// å†…å­˜åˆå§‹åŒ–ã€‚æ•°ç›®ã€æŒ‡é’ˆå˜é‡ç½®é›¶
-	V->iNy = 0;
-	V->pdVal = NULL;
+    // ÄÚ´æ³õÊ¼»¯¡£ÊıÄ¿¡¢Ö¸Õë±äÁ¿ÖÃÁã
+    V->iNy = 0;
+    V->pdVal = NULL;
 }
 
 //////////////////////////////////////////////////////////////////////
-// å‡½ æ•° å:          // allocate_MatReal
-// æ    è¿°:          // ç¨€ç–å®æ•°å¯¹ç§°çŸ©é˜µåˆ†é…ç»´æ•°
-// è¾“å…¥å‚æ•°:          // SprsMatRealStru *pAï¼šç¨€ç–å®æ•°å¯¹é˜µçŸ©é˜µæˆ–ä¸Šä¸‰è§’çŸ©é˜µ
-// è¾“å‡ºå‚æ•°:          // æ— 
-// è¿” å› å€¼:          // æ— 
-// å…¶    ä»–:          // è°ƒç”¨è¯¥å‡½æ•°å‰ç¨€ç–å®æ•°å¯¹ç§°çŸ©é˜µçš„ç»´æ•°A->Mat.iDimå·²ç»ç¡®å®š
-                      // å› å¯èƒ½è¿˜æœ‰æ³¨å…¥å…ƒå¼•å…¥ï¼Œç¨€ç–å®æ•°å¯¹é˜µçŸ©é˜µAçš„å…ƒç´ å®é™…æ•°ç›®ä¸ç¡®å®šï¼Œæ•…åˆ†é…ç»´æ•°æ—¶ä¸€æ¬¡å°†ç»´æ•°æ‰©å¤Ÿ
+// º¯ Êı Ãû:          // allocate_MatReal
+// Ãè    Êö:          // Ï¡ÊèÊµÊı¶Ô³Æ¾ØÕó·ÖÅäÎ¬Êı
+// ÊäÈë²ÎÊı:          // SprsMatRealStru *pA£ºÏ¡ÊèÊµÊı¶ÔÕó¾ØÕó»òÉÏÈı½Ç¾ØÕó
+// Êä³ö²ÎÊı:          // ÎŞ
+// ·µ »Ø Öµ:          // ÎŞ
+// Æä    Ëû:          // µ÷ÓÃ¸Ãº¯ÊıÇ°Ï¡ÊèÊµÊı¶Ô³Æ¾ØÕóµÄÎ¬ÊıA->Mat.iDimÒÑ¾­È·¶¨
+// Òò¿ÉÄÜ»¹ÓĞ×¢ÈëÔªÒıÈë£¬Ï¡ÊèÊµÊı¶ÔÕó¾ØÕóAµÄÔªËØÊµ¼ÊÊıÄ¿²»È·¶¨£¬¹Ê·ÖÅäÎ¬ÊıÊ±Ò»´Î½«Î¬ÊıÀ©¹»
 //////////////////////////////////////////////////////////////////////
 void allocate_MatReal(SprsMatRealStru *A)
 {
-	int m = 0;
-	int n = 0;
+    int m = 0;
+    int n = 0;
 
-	m = A->Mat.iDim + 1;
-	A->Mat.iNymax = m * (m + 1)/2;  // çŸ©é˜µå…ƒç´ æœ€å¤§æ•°ç›®
-	n = A->Mat.iNymax  + 1;
+    m = A->Mat.iDim + 1;
+    A->Mat.iNymax = m * (m + 1)/2;  // ¾ØÕóÔªËØ×î´óÊıÄ¿
+    n = A->Mat.iNymax  + 1;
 
-	A->Mat.piJno = (int *)calloc(n,sizeof(int));
-	A->Mat.piIstart = (int *)calloc(m+1,sizeof(int));
-	A->Mat.piIdiag = (int *)calloc(m,sizeof(int));
-	A->Mat.piLinkp = (int *)calloc(n,sizeof(int));	
-	A->Mat.piLinkn = (int *)calloc(n,sizeof(int));
-	A->pdVal = (double *)calloc(n,sizeof(double));
+    A->Mat.piJno = (int *)calloc(n,sizeof(int));
+    A->Mat.piIstart = (int *)calloc(m+1,sizeof(int));
+    A->Mat.piIdiag = (int *)calloc(m,sizeof(int));
+    A->Mat.piLinkp = (int *)calloc(n,sizeof(int));
+    A->Mat.piLinkn = (int *)calloc(n,sizeof(int));
+    A->pdVal = (double *)calloc(n,sizeof(double));
 }
 
 //////////////////////////////////////////////////////////////////////
-// å‡½ æ•° å:          // allocate_VecReal
-// æ    è¿°:          // å®æ•°å‘é‡åˆ†é…ç»´æ•°
-// è¾“å…¥å‚æ•°:          // VecRealStru *Vï¼šå®æ•°å‘é‡
-// è¾“å‡ºå‚æ•°:          // æ— 
-// è¿” å› å€¼:          // æ— 
-// å…¶    ä»–:          // è°ƒç”¨è¯¥å‡½æ•°å‰å‘é‡å…ƒç´ æ•°ç›®V->iNyå·²ç»ç¡®å®š
+// º¯ Êı Ãû:          // allocate_VecReal
+// Ãè    Êö:          // ÊµÊıÏòÁ¿·ÖÅäÎ¬Êı
+// ÊäÈë²ÎÊı:          // VecRealStru *V£ºÊµÊıÏòÁ¿
+// Êä³ö²ÎÊı:          // ÎŞ
+// ·µ »Ø Öµ:          // ÎŞ
+// Æä    Ëû:          // µ÷ÓÃ¸Ãº¯ÊıÇ°ÏòÁ¿ÔªËØÊıÄ¿V->iNyÒÑ¾­È·¶¨
 //////////////////////////////////////////////////////////////////////
 void allocate_VecReal(VecRealStru *V)
 {
-	int m = 0;
-	m = V->iNy + 1;
-	V->pdVal = (double *)calloc(m,sizeof(double));
+    int m = 0;
+    m = V->iNy + 1;
+    V->pdVal = (double *)calloc(m,sizeof(double));
 }
 
 //////////////////////////////////////////////////////////////////////
-// å‡½ æ•° å:          // deallocate_MatReal
-// æ    è¿°:          // æŒ‡é’ˆå˜é‡å†…å­˜é‡Šæ”¾
-                      // è¢«deallocateNet()è°ƒç”¨
-// è¾“å…¥å‚æ•°:          // æ— 
-// è¾“å‡ºå‚æ•°:          // æ— 
-// è¿” å› å€¼:          // æ— 
-// å…¶    ä»–:          // å…¶å®ƒè¯´æ˜
+// º¯ Êı Ãû:          // deallocate_MatReal
+// Ãè    Êö:          // Ö¸Õë±äÁ¿ÄÚ´æÊÍ·Å
+// ±»deallocateNet()µ÷ÓÃ
+// ÊäÈë²ÎÊı:          // ÎŞ
+// Êä³ö²ÎÊı:          // ÎŞ
+// ·µ »Ø Öµ:          // ÎŞ
+// Æä    Ëû:          // ÆäËüËµÃ÷
 //////////////////////////////////////////////////////////////////////
 void deallocate_MatReal(SprsMatRealStru *A)
 {
-	free(A->Mat.piJno);
-	free(A->Mat.piIstart);
-	free(A->Mat.piIdiag);
-	free(A->Mat.piLinkn );
-	free(A->Mat.piLinkp);
+    free(A->Mat.piJno);
+    free(A->Mat.piIstart);
+    free(A->Mat.piIdiag);
+    free(A->Mat.piLinkn );
+    free(A->Mat.piLinkp);
 }
 
 //////////////////////////////////////////////////////////////////////
-// å‡½ æ•° å:          // deallocate_VecReal
-// æ    è¿°:          // æŒ‡é’ˆå˜é‡å†…å­˜é‡Šæ”¾
-                      // è¢«deallocateNet()è°ƒç”¨
-// è¾“å…¥å‚æ•°:          // VecRealStru *Vï¼š
-// è¾“å‡ºå‚æ•°:          // æ— 
-// è¿” å› å€¼:          // æ— 
-// å…¶    ä»–:          // å…¶å®ƒè¯´æ˜
+// º¯ Êı Ãû:          // deallocate_VecReal
+// Ãè    Êö:          // Ö¸Õë±äÁ¿ÄÚ´æÊÍ·Å
+// ±»deallocateNet()µ÷ÓÃ
+// ÊäÈë²ÎÊı:          // VecRealStru *V£º
+// Êä³ö²ÎÊı:          // ÎŞ
+// ·µ »Ø Öµ:          // ÎŞ
+// Æä    Ëû:          // ÆäËüËµÃ÷
 //////////////////////////////////////////////////////////////////////
 void deallocate_VecReal(VecRealStru *V)
 {
-	// æŒ‡é’ˆå˜é‡å†…å­˜é‡Šæ”¾
-	free(V->pdVal);
+    // Ö¸Õë±äÁ¿ÄÚ´æÊÍ·Å
+    free(V->pdVal);
 }
 
 //////////////////////////////////////////////////////////////////////
-// å‡½ æ•° å:          // SparseMatrix_adlink
-// æ    è¿°:          // ç¨€ç–çŸ©é˜µåŠ é“¾ç¨‹åº
-// è¾“å…¥å‚æ•°:          // SprsMatRealStru *pAï¼šç¨€ç–å®æ•°å¯¹é˜µçŸ©é˜µæˆ–ä¸Šä¸‰è§’çŸ©é˜µ
-// è¾“å‡ºå‚æ•°:          // æ— 
-// è¿” å› å€¼:          // æ— 
-// å…¶    ä»–:          // å…¶å®ƒè¯´æ˜,writted by xdc 2014/6/16
+// º¯ Êı Ãû:          // SparseMatrix_adlink
+// Ãè    Êö:          // Ï¡Êè¾ØÕó¼ÓÁ´³ÌĞò
+// ÊäÈë²ÎÊı:          // SprsMatRealStru *pA£ºÏ¡ÊèÊµÊı¶ÔÕó¾ØÕó»òÉÏÈı½Ç¾ØÕó
+// Êä³ö²ÎÊı:          // ÎŞ
+// ·µ »Ø Öµ:          // ÎŞ
+// Æä    Ëû:          // ÆäËüËµÃ÷,writted by xdc 2014/6/16
 //////////////////////////////////////////////////////////////////////
 void SparseMatrix_adlink(SprsMatRealStru *pA)
 {
-   int iDim;
-   int i,j,k,m,r;
-   int jmn,irow,ny;
+    int iDim;
+    int i,j,k,m,r;
+    int jmn,irow,ny;
 
-   int *wb;
-   int *istart,*jno;
-   int *linkp,*linkn;
-   double *pdval;
+    int *wb;
+    int *istart,*jno;
+    int *linkp,*linkn;
+    double *pdval;
 
-   iDim=pA->Mat.iDim;
-   istart=pA->Mat.piIstart;
-   jno=pA->Mat.piJno;
-   pdval=pA->pdVal;
-   ny=pA->Mat.iNy;
+    iDim=pA->Mat.iDim;
+    istart=pA->Mat.piIstart;
+    jno=pA->Mat.piJno;
+    pdval=pA->pdVal;
+    ny=pA->Mat.iNy;
 
-   linkp=pA->Mat.piLinkp;
-   linkn=pA->Mat.piLinkn;
+    linkp=pA->Mat.piLinkp;
+    linkn=pA->Mat.piLinkn;
 
-   wb=(int *)calloc(iDim+1,sizeof(int));
-   //checkPoint(wb,"SparseMatrix_adlink:wb");
+    wb=(int *)calloc(iDim+1,sizeof(int));
+    //checkPoint(wb,"SparseMatrix_adlink:wb");
 
-   for(i=1; i<=ny; i++)
-   {
-      linkp[i]=0;
-      linkn[i]=0;
-   }
+    for(i=1; i<=ny; i++)
+    {
+        linkp[i]=0;
+        linkn[i]=0;
+    }
 
-   for(i=1; i<=iDim; i++)
-   {
-      jmn=istart[i]; 
-      wb[i]=jmn;
-      linkp[jmn]=jmn;
-      linkn[jmn]=i;
-   }
-   
-   irow=1;
-   for(i=1;i<=ny;i++)
-   {
-      if(i>=istart[irow+1]) 
-         irow++;
-      
-      j=jno[i];
+    for(i=1; i<=iDim; i++)
+    {
+        jmn=istart[i];
+        wb[i]=jmn;
+        linkp[jmn]=jmn;
+        linkn[jmn]=i;
+    }
 
-      if(irow!=j)
-      {
-			k = wb[j];
-			m = linkp[k];
-         r = linkn[k];
-			linkp[i] = m;
-         linkn[i] = r;
-			linkp[k] = i;
-         linkn[k] = irow;
-			wb[j] = i;	
-      }
-   }
+    irow=1;
+    for(i=1;i<=ny;i++)
+    {
+        if(i>=istart[irow+1])
+            irow++;
 
-   for(i=1; i<=iDim; i++)
-   {
-      jmn=istart[i];
-      if(jmn==linkp[jmn])
-      {
-         linkn[jmn]=0;
-         linkp[jmn]=0;
-      }
-   }
+        j=jno[i];
 
-   free(wb);
-   wb = NULL;
+        if(irow!=j)
+        {
+            k = wb[j];
+            m = linkp[k];
+            r = linkn[k];
+            linkp[i] = m;
+            linkn[i] = r;
+            linkp[k] = i;
+            linkn[k] = irow;
+            wb[j] = i;
+        }
+    }
+
+    for(i=1; i<=iDim; i++)
+    {
+        jmn=istart[i];
+        if(jmn==linkp[jmn])
+        {
+            linkn[jmn]=0;
+            linkp[jmn]=0;
+        }
+    }
+
+    free(wb);
+    wb = NULL;
 }
 
 //////////////////////////////////////////////////////////////////////
-// å‡½ æ•° å:          // LU_EliminationTreeG
-// æ    è¿°:          // æ ¹æ®å¯¼çº³çŸ©é˜µGçš„ç»“æ„è·å¾—æ¶ˆå»æ ‘(Gå¯¹ç§°)
-                      // LU_SymbolicSymGè°ƒç”¨
-// è¾“å…¥å‚æ•°:          // ä¿å­˜æœ‰çŸ©é˜µç»“æ„ä¿¡æ¯çš„GçŸ©é˜µ
-// è¾“å‡ºå‚æ•°:          // æ¶ˆå»æ ‘ä¿¡æ¯ï¼Œä¸€ç»´æ•°ç»„
-// è¿” å› å€¼:          // æ— 
-// å…¶    ä»–:          // ä¸ä¼šå½±å“Gé˜µä¸­çŸ©é˜µçš„ä»»ä½•ä¿¡æ¯,created by xdc 2014/6/16
+// º¯ Êı Ãû:          // LU_EliminationTreeG
+// Ãè    Êö:          // ¸ù¾İµ¼ÄÉ¾ØÕóGµÄ½á¹¹»ñµÃÏûÈ¥Ê÷(G¶Ô³Æ)
+// LU_SymbolicSymGµ÷ÓÃ
+// ÊäÈë²ÎÊı:          // ±£´æÓĞ¾ØÕó½á¹¹ĞÅÏ¢µÄG¾ØÕó
+// Êä³ö²ÎÊı:          // ÏûÈ¥Ê÷ĞÅÏ¢£¬Ò»Î¬Êı×é
+// ·µ »Ø Öµ:          // ÎŞ
+// Æä    Ëû:          // ²»»áÓ°ÏìGÕóÖĞ¾ØÕóµÄÈÎºÎĞÅÏ¢,created by xdc 2014/6/16
 //////////////////////////////////////////////////////////////////////
 void LU_EliminationTreeG(SprsMatRealStru *pG, int* pParent)
 {
-   int jmn;
-	int i,j,t;
-	int kp,kn,iDim;
+    int jmn;
+    int i,j,t;
+    int kp,kn,iDim;
 
-   int *vParent;
-   int *linkp,*linkn,*istart;
+    int *vParent;
+    int *linkp,*linkn,*istart;
 
-   iDim=pG->Mat.iDim;  
-	vParent=(int *)calloc(iDim+1,sizeof(int));
-   //checkPoint(vParent,"LU_EliminationTreeG:vParent");
+    iDim=pG->Mat.iDim;
+    vParent=(int *)calloc(iDim+1,sizeof(int));
+    //checkPoint(vParent,"LU_EliminationTreeG:vParent");
 
-   linkp=pG->Mat.piLinkp;
-   linkn=pG->Mat.piLinkn;
-   istart=pG->Mat.piIstart;
+    linkp=pG->Mat.piLinkp;
+    linkn=pG->Mat.piLinkn;
+    istart=pG->Mat.piIstart;
 
-	for(i=1; i<=iDim; i++)
-	{
-		pParent[i] = 0;
-		vParent[i] = 0;
+    for(i=1; i<=iDim; i++)
+    {
+        pParent[i] = 0;
+        vParent[i] = 0;
 
-      jmn = istart[i];
-      kn = linkn[jmn];
-      kp = linkp[jmn];
-      if(kp==0) continue;
-      
-      while(kp!=jmn)
-      {
-			j = kn;
-			while(vParent[j]!=0
-				&& vParent[j] < i)
-			{
-				t = vParent[j];
-				vParent[j] = i;
-				j = t;
-			}
+        jmn = istart[i];
+        kn = linkn[jmn];
+        kp = linkp[jmn];
+        if(kp==0) continue;
 
-			if(vParent[j]==0)
-			{
-				vParent[j] = i;
-				pParent[j] = i;
-			}
+        while(kp!=jmn)
+        {
+            j = kn;
+            while(vParent[j]!=0
+                    && vParent[j] < i)
+            {
+                t = vParent[j];
+                vParent[j] = i;
+                j = t;
+            }
 
-         kn=linkn[kp];
-         kp=linkp[kp];
-		}
-	}
+            if(vParent[j]==0)
+            {
+                vParent[j] = i;
+                pParent[j] = i;
+            }
 
-   free(vParent);
-   vParent=NULL;
-   return;
+            kn=linkn[kp];
+            kp=linkp[kp];
+        }
+    }
+
+    free(vParent);
+    vParent=NULL;
+    return;
 }
 
 //////////////////////////////////////////////////////////////////////
-// å‡½ æ•° å:          // LU_SetUMatECountsG
-// æ    è¿°:          // ç¡®å®šä¸‰è§’åˆ†è§£åä¸Šä¸‰è§’é˜µå…ƒç´ ä¸ªæ•°
-                      // LU_SymbolicSymGè°ƒç”¨
-// è¾“å…¥å‚æ•°:          // æ¶ˆå»æ ‘pParent,åŠGé˜µç»“æ„
-// è¾“å‡ºå‚æ•°:          // Ué˜µç»“æ„ä¸­ç»´æ•°åŠå…¶å€¼
-// è¿” å› å€¼:          // æ— 
-// å…¶    ä»–:          // ä¸ä¼šå½±å“Gé˜µä¸­çŸ©é˜µçš„ä»»ä½•ä¿¡æ¯,created by xdc 2014/6/16
+// º¯ Êı Ãû:          // LU_SetUMatECountsG
+// Ãè    Êö:          // È·¶¨Èı½Ç·Ö½âºóÉÏÈı½ÇÕóÔªËØ¸öÊı
+// LU_SymbolicSymGµ÷ÓÃ
+// ÊäÈë²ÎÊı:          // ÏûÈ¥Ê÷pParent,¼°GÕó½á¹¹
+// Êä³ö²ÎÊı:          // UÕó½á¹¹ÖĞÎ¬Êı¼°ÆäÖµ
+// ·µ »Ø Öµ:          // ÎŞ
+// Æä    Ëû:          // ²»»áÓ°ÏìGÕóÖĞ¾ØÕóµÄÈÎºÎĞÅÏ¢,created by xdc 2014/6/16
 //////////////////////////////////////////////////////////////////////
 void LU_SetUMatECountsG(SprsMatRealStru *pG,int* pParent,SprsUMatRealStru *pU)
 {
-	int i,j;
-	int jmn,kp,kn,iDim;
-   int *mark,*colcnt,*rowcnt;
-   int *istart,*linkp,*linkn;
-   int *r_u,*j_u,*rs_u,*cs_u;
-   double *d_u,*u_u;
+    int i,j;
+    int jmn,kp,kn,iDim;
+    int *mark,*colcnt,*rowcnt;
+    int *istart,*linkp,*linkn;
+    int *r_u,*j_u,*rs_u,*cs_u;
+    double *d_u,*u_u;
 
-   iDim=pG->Mat.iDim;
-   pU->uMax.iDim=iDim;
+    iDim=pG->Mat.iDim;
+    pU->uMax.iDim=iDim;
 
-	mark =(int *)calloc(iDim+1,sizeof(int));
-   //checkPoint(mark,"LU_SetUMatECountsG:mark");
-   colcnt=(int *)calloc(iDim+1,sizeof(int));
-   //checkPoint(colcnt,"LU_SetUMatECountsG:colcnt");
-	rowcnt=(int *)calloc(iDim+1,sizeof(int));
-   //checkPoint(rowcnt,"LU_SetUMatECountsG:rowcnt");
+    mark =(int *)calloc(iDim+1,sizeof(int));
+    //checkPoint(mark,"LU_SetUMatECountsG:mark");
+    colcnt=(int *)calloc(iDim+1,sizeof(int));
+    //checkPoint(colcnt,"LU_SetUMatECountsG:colcnt");
+    rowcnt=(int *)calloc(iDim+1,sizeof(int));
+    //checkPoint(rowcnt,"LU_SetUMatECountsG:rowcnt");
 
-   rs_u=(int *)calloc(iDim+2,sizeof(int));
-   //checkPoint(rs_u,"LU_SetUMatECountsG:rs_u");
-   pU->uMax.rs_u=rs_u;
+    rs_u=(int *)calloc(iDim+2,sizeof(int));
+    //checkPoint(rs_u,"LU_SetUMatECountsG:rs_u");
+    pU->uMax.rs_u=rs_u;
 
-   cs_u=(int *)calloc(iDim+2,sizeof(int));
-   //checkPoint(cs_u,"LU_SetUMatECountsG:cs_u");
-   pU->uMax.cs_u=cs_u;
+    cs_u=(int *)calloc(iDim+2,sizeof(int));
+    //checkPoint(cs_u,"LU_SetUMatECountsG:cs_u");
+    pU->uMax.cs_u=cs_u;
 
-   istart=pG->Mat.piIstart;
-   linkp=pG->Mat.piLinkp;
-   linkn=pG->Mat.piLinkn;
+    istart=pG->Mat.piIstart;
+    linkp=pG->Mat.piLinkp;
+    linkn=pG->Mat.piLinkn;
 
-   for(i=1; i<=iDim; i++)
-      colcnt[i]=0;
+    for(i=1; i<=iDim; i++)
+        colcnt[i]=0;
 
-	for(i = 1; i <= iDim; i++)
-	{
-		mark[i] = i;
-		rowcnt[i] = 0;
+    for(i = 1; i <= iDim; i++)
+    {
+        mark[i] = i;
+        rowcnt[i] = 0;
 
-		jmn = istart[i];
-      kn = linkn[jmn];
-      kp = linkp[jmn];
-      if(kp==0) continue;
+        jmn = istart[i];
+        kn = linkn[jmn];
+        kp = linkp[jmn];
+        if(kp==0) continue;
 
-      while(kp != jmn)
-      {
-			j = kn;
-			while(mark[j] != i)
-			{
-				rowcnt[i] ++;
-            colcnt[j] ++;
-				mark[j] = i;
-				j = pParent[j];
-			}
+        while(kp != jmn)
+        {
+            j = kn;
+            while(mark[j] != i)
+            {
+                rowcnt[i] ++;
+                colcnt[j] ++;
+                mark[j] = i;
+                j = pParent[j];
+            }
 
-         kn=linkn[kp];
-         kp=linkp[kp];
-		}
-	}
+            kn=linkn[kp];
+            kp=linkp[kp];
+        }
+    }
 
-	rs_u[1] = 1;
-   cs_u[1] = 1;
-   pU->uMax.iNzs=0;
-	for(i=2; i<=iDim+1; i++)
-	{
-		pU->uMax.iNzs=pU->uMax.iNzs+colcnt[i-1];
-		rs_u[i] = rs_u[i-1]+colcnt[i-1];
-		cs_u[i] = cs_u[i-1]+rowcnt[i-1];
-	}
+    rs_u[1] = 1;
+    cs_u[1] = 1;
+    pU->uMax.iNzs=0;
+    for(i=2; i<=iDim+1; i++)
+    {
+        pU->uMax.iNzs=pU->uMax.iNzs+colcnt[i-1];
+        rs_u[i] = rs_u[i-1]+colcnt[i-1];
+        cs_u[i] = cs_u[i-1]+rowcnt[i-1];
+    }
 
 
-   d_u=(double *)calloc(iDim+1,sizeof(double));
-   //checkPoint(d_u,"LU_SetUMatECountsG:d_u");
-   pU->d_u=d_u;
+    d_u=(double *)calloc(iDim+1,sizeof(double));
+    //checkPoint(d_u,"LU_SetUMatECountsG:d_u");
+    pU->d_u=d_u;
 
-   u_u=(double *)calloc(pU->uMax.iNzs+1,sizeof(double));
-	//checkPoint(u_u,"LU_SetUMatECountsG:u_u");
-   pU->u_u=u_u;
+    u_u=(double *)calloc(pU->uMax.iNzs+1,sizeof(double));
+    //checkPoint(u_u,"LU_SetUMatECountsG:u_u");
+    pU->u_u=u_u;
 
-   r_u=(int *)calloc(pU->uMax.iNzs+1,sizeof(int));
-   //checkPoint(r_u,"LU_SetUMatECountsG:r_u");
-   pU->uMax.r_u=r_u;
+    r_u=(int *)calloc(pU->uMax.iNzs+1,sizeof(int));
+    //checkPoint(r_u,"LU_SetUMatECountsG:r_u");
+    pU->uMax.r_u=r_u;
 
-   j_u=(int *)calloc(pU->uMax.iNzs+1,sizeof(int));
-   //checkPoint(j_u,"LU_SetUMatECountsG:j_u");
-   pU->uMax.j_u=j_u;
-   
-   free(mark);
-   free(colcnt);
-   free(rowcnt);
-	return;
+    j_u=(int *)calloc(pU->uMax.iNzs+1,sizeof(int));
+    //checkPoint(j_u,"LU_SetUMatECountsG:j_u");
+    pU->uMax.j_u=j_u;
+
+    free(mark);
+    free(colcnt);
+    free(rowcnt);
+    return;
 }
 
 
 //////////////////////////////////////////////////////////////////////
-// å‡½ æ•° å:          // LU_SymbolicSymG
-// æ    è¿°:          // ç¨€ç–å®æ•°å¯¹ç§°çŸ©é˜µç¬¦å·å› å­åˆ†è§£ï¼Œç¡®å®šUé˜µç»“æ„å’Œå…ƒç´ ä¸ªæ•°
-                      //
-// è¾“å…¥å‚æ•°:          // Gé˜µç»“æ„
-// è¾“å‡ºå‚æ•°:          // Ué˜µç»“æ„,å¹¶ç”³è¯·Ué˜µå†…å­˜ï¼ŒåŒ…æ‹¬å·¥ä½œç›¸é‡
-// è¿” å› å€¼:          // æ— 
-// å…¶    ä»–:          // ä¸ä¼šå½±å“Gé˜µä¸­çŸ©é˜µçš„ä»»ä½•ä¿¡æ¯,created by xdc 2014/6/16
+// º¯ Êı Ãû:          // LU_SymbolicSymG
+// Ãè    Êö:          // Ï¡ÊèÊµÊı¶Ô³Æ¾ØÕó·ûºÅÒò×Ó·Ö½â£¬È·¶¨UÕó½á¹¹ºÍÔªËØ¸öÊı
+//
+// ÊäÈë²ÎÊı:          // GÕó½á¹¹
+// Êä³ö²ÎÊı:          // UÕó½á¹¹,²¢ÉêÇëUÕóÄÚ´æ£¬°üÀ¨¹¤×÷ÏàÁ¿
+// ·µ »Ø Öµ:          // ÎŞ
+// Æä    Ëû:          // ²»»áÓ°ÏìGÕóÖĞ¾ØÕóµÄÈÎºÎĞÅÏ¢,created by xdc 2014/6/16
 //////////////////////////////////////////////////////////////////////
 void LU_SymbolicSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
 {
-	int p;
-	int i,j,k;
-	int jmn,kp,kn;
-	int len,top,iDim;
-   int *pParent;
-   int *Lnz,*Flag,*Pattern;
-   int *istart,*linkp,*linkn;
-   int *rs_u,*j_u,*r_u;
+    int p;
+    int i,j,k;
+    int jmn,kp,kn;
+    int len,top,iDim;
+    int *pParent;
+    int *Lnz,*Flag,*Pattern;
+    int *istart,*linkp,*linkn;
+    int *rs_u,*j_u,*r_u;
 
-   deallocate_UMatReal(pFU); //!!xdc!!20150513!!å¢åŠ ï¼šè§£å†³å†…å­˜æ³„éœ²é—®é¢˜
+    deallocate_UMatReal(pFU); //!!xdc!!20150513!!Ôö¼Ó£º½â¾öÄÚ´æĞ¹Â¶ÎÊÌâ
 
-   iDim=pG->Mat.iDim;
-   pParent=(int *)calloc(iDim+1,sizeof(int));
-   //checkPoint(pParent,"LU_SymbolicSymG:pParent");
+    iDim=pG->Mat.iDim;
+    pParent=(int *)calloc(iDim+1,sizeof(int));
+    //checkPoint(pParent,"LU_SymbolicSymG:pParent");
 
-   Flag=(int *)calloc(iDim+1,sizeof(int));
-   //checkPoint(Flag,"LU_SymbolicSymG:Flag");
+    Flag=(int *)calloc(iDim+1,sizeof(int));
+    //checkPoint(Flag,"LU_SymbolicSymG:Flag");
 
-   Pattern=(int *)calloc(iDim+1,sizeof(int));
-   //checkPoint(Pattern,"LU_SymbolicSymG:Pattern");
+    Pattern=(int *)calloc(iDim+1,sizeof(int));
+    //checkPoint(Pattern,"LU_SymbolicSymG:Pattern");
 
-   Lnz=(int *)calloc(iDim+1,sizeof(int));
-   //checkPoint(Lnz,"LU_SymbolicSymG:Lnz");
+    Lnz=(int *)calloc(iDim+1,sizeof(int));
+    //checkPoint(Lnz,"LU_SymbolicSymG:Lnz");
 
-   LU_EliminationTreeG(pG,pParent);
-   LU_SetUMatECountsG(pG,pParent,pFU);
+    LU_EliminationTreeG(pG,pParent);
+    LU_SetUMatECountsG(pG,pParent,pFU);
 
-   istart=pG->Mat.piIstart;
-   linkp=pG->Mat.piLinkp;
-   linkn=pG->Mat.piLinkn;
+    istart=pG->Mat.piIstart;
+    linkp=pG->Mat.piLinkp;
+    linkn=pG->Mat.piLinkn;
 
-   rs_u=pFU->uMax.rs_u;
-   r_u=pFU->uMax.r_u;
-   j_u=pFU->uMax.j_u;
+    rs_u=pFU->uMax.rs_u;
+    r_u=pFU->uMax.r_u;
+    j_u=pFU->uMax.j_u;
 
-	j = 1;
-	for(k = 1; k <= iDim; k++)
-	{
-		jmn = istart[k];
-      kn = linkn[jmn];
-      kp = linkp[jmn];
+    j = 1;
+    for(k = 1; k <= iDim; k++)
+    {
+        jmn = istart[k];
+        kn = linkn[jmn];
+        kp = linkp[jmn];
 
-		top = iDim+1;
-		Flag[k] = k;
-		Lnz[k] = 0;
+        top = iDim+1;
+        Flag[k] = k;
+        Lnz[k] = 0;
 
-      if(kp==0) continue;
-      while(kp != jmn)
-      {
-			i = kn;
-			for(len=1; Flag[i] != k; i=pParent[i])
-			{
-				Pattern[len++] = i; 
-				Flag[i] = k;
-			}
-			while(len>1) 
-			{
-				Pattern[--top] = Pattern[--len];
-			}
+        if(kp==0) continue;
+        while(kp != jmn)
+        {
+            i = kn;
+            for(len=1; Flag[i] != k; i=pParent[i])
+            {
+                Pattern[len++] = i;
+                Flag[i] = k;
+            }
+            while(len>1)
+            {
+                Pattern[--top] = Pattern[--len];
+            }
 
-         kn=linkn[kp];
-         kp=linkp[kp];
-		}
+            kn=linkn[kp];
+            kp=linkp[kp];
+        }
 
-		for (; top <= iDim; top++)
-		{
-			i = Pattern[top];	
-			p = rs_u[i]+Lnz[i];
-			j_u[p] = k;
-			Lnz[i]++;
+        for (; top <= iDim; top++)
+        {
+            i = Pattern[top];
+            p = rs_u[i]+Lnz[i];
+            j_u[p] = k;
+            Lnz[i]++;
 
-			r_u[j] = i;
-			j ++;
-		}
-	}
+            r_u[j] = i;
+            j ++;
+        }
+    }
 
-   pFU->nzs=Lnz; //ç›´æ¥å°†Lnzè®¾ç½®æˆå·¥ä½œæ•°ç»„
-   pFU->work=(double *)calloc(iDim+1,sizeof(double));
-   //checkPoint(pFU->work,"LU_SymbolicSymG:work");
+    pFU->nzs=Lnz; //Ö±½Ó½«LnzÉèÖÃ³É¹¤×÷Êı×é
+    pFU->work=(double *)calloc(iDim+1,sizeof(double));
+    //checkPoint(pFU->work,"LU_SymbolicSymG:work");
 
-   free(Flag);
-   free(Pattern);
-   free(pParent);
+    free(Flag);
+    free(Pattern);
+    free(pParent);
 }
 
 //////////////////////////////////////////////////////////////////////
-// å‡½ æ•° å:          // LU_NumbericSymG
-// æ    è¿°:          //ç¨€ç–å®æ•°å¯¹ç§°çŸ©é˜µæ•°å€¼å› å­åˆ†è§£ï¼Œç¡®å®šUé˜µå…ƒç´ å€¼
-                      //
-// è¾“å…¥å‚æ•°:          // Gé˜µç»“æ„åŠGé˜µå€¼
-// è¾“å‡ºå‚æ•°:          // Ué˜µä¸­çš„å€¼
-// è¿” å› å€¼:          // æ— 
-// å…¶    ä»–:          // ä¸ä¼šå½±å“Gé˜µä¸­çŸ©é˜µçš„ä»»ä½•ä¿¡æ¯,created by xdc 2014/6/16
+// º¯ Êı Ãû:          // LU_NumbericSymG
+// Ãè    Êö:          //Ï¡ÊèÊµÊı¶Ô³Æ¾ØÕóÊıÖµÒò×Ó·Ö½â£¬È·¶¨UÕóÔªËØÖµ
+//
+// ÊäÈë²ÎÊı:          // GÕó½á¹¹¼°GÕóÖµ
+// Êä³ö²ÎÊı:          // UÕóÖĞµÄÖµ
+// ·µ »Ø Öµ:          // ÎŞ
+// Æä    Ëû:          // ²»»áÓ°ÏìGÕóÖĞ¾ØÕóµÄÈÎºÎĞÅÏ¢,created by xdc 2014/6/16
 //////////////////////////////////////////////////////////////////////
 void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
 {
-	int i,j,k;
-	int p,m,n;
-   int kn,kp;
-	int jmn,jmx;
-   int iDim;
+    int i,j,k;
+    int p,m,n;
+    int kn,kp;
+    int jmn,jmx;
+    int iDim;
 
-	double dj,dk;
-	double yc,yr;
+    double dj,dk;
+    double yc,yr;
 
-	int *nzs;
-   int *istart,*linkp,*linkn;
-   double *g;
+    int *nzs;
+    int *istart,*linkp,*linkn;
+    double *g;
 
-   int *rs_u,*cs_u,*r_u,*j_u;
-   double *d_u,*u_u;
-   double *work;
+    int *rs_u,*cs_u,*r_u,*j_u;
+    double *d_u,*u_u;
+    double *work;
 
-   nzs = pFU->nzs;
-	work = pFU->work;
-   iDim=pG->Mat.iDim;
+    nzs = pFU->nzs;
+    work = pFU->work;
+    iDim=pG->Mat.iDim;
 
-   istart=pG->Mat.piIstart;
-   linkp=pG->Mat.piLinkp;
-   linkn=pG->Mat.piLinkn;
-   g=pG->pdVal;
+    istart=pG->Mat.piIstart;
+    linkp=pG->Mat.piLinkp;
+    linkn=pG->Mat.piLinkn;
+    g=pG->pdVal;
 
-   rs_u=pFU->uMax.rs_u;
-   cs_u=pFU->uMax.cs_u;
-   r_u=pFU->uMax.r_u;
-   j_u=pFU->uMax.j_u;
-   d_u=pFU->d_u;
-   u_u=pFU->u_u;
+    rs_u=pFU->uMax.rs_u;
+    cs_u=pFU->uMax.cs_u;
+    r_u=pFU->uMax.r_u;
+    j_u=pFU->uMax.j_u;
+    d_u=pFU->d_u;
+    u_u=pFU->u_u;
 
-	for(i = 1; i <= iDim; i++)
-	{
-		nzs[i] = 0;
-      work[i]=0.0;
+    for(i = 1; i <= iDim; i++)
+    {
+        nzs[i] = 0;
+        work[i]=0.0;
 
-		jmn = istart[i];
-      kn = linkn[jmn];
-      kp = linkp[jmn];
+        jmn = istart[i];
+        kn = linkn[jmn];
+        kp = linkp[jmn];
 
-      if(kp==0)
-      {
-         dk = g[jmn];
-		   if(dk >= 0.0 && fabs(dk) < 1.0e-20)	dk = 1.0e-20;
-		   if(dk < 0.0 && fabs(dk) < 1.0e-20) dk = -1.0e-20;
-		   d_u[i] = dk;
-         continue;
-      }
-      while(kp != jmn)
-      {
-			work[kn] = g[kp];
-         kn = linkn[kp];
-         kp = linkp[kp];
-		}
+        if(kp==0)
+        {
+            dk = g[jmn];
+            if(dk >= 0.0 && fabs(dk) < 1.0e-20)	dk = 1.0e-20;
+            if(dk < 0.0 && fabs(dk) < 1.0e-20) dk = -1.0e-20;
+            d_u[i] = dk;
+            continue;
+        }
+        while(kp != jmn)
+        {
+            work[kn] = g[kp];
+            kn = linkn[kp];
+            kp = linkp[kp];
+        }
 
-		dk = g[jmn];
+        dk = g[jmn];
 
-		jmn = cs_u[i];
-		jmx = cs_u[i+1];
-		for(k = jmn; k < jmx; k++)
-		{
-			j = r_u[k];
-			dj = d_u[j];
+        jmn = cs_u[i];
+        jmx = cs_u[i+1];
+        for(k = jmn; k < jmx; k++)
+        {
+            j = r_u[k];
+            dj = d_u[j];
 
-			yr = work[j];
-			work[j] = 0.0;
+            yr = work[j];
+            work[j] = 0.0;
 
-			n = rs_u[j] + nzs[j];
-			for(p = rs_u[j]; p < n; p++)
-			{
-				m = j_u[p];
-				work[m] -= u_u[p]*yr;
-			}
+            n = rs_u[j] + nzs[j];
+            for(p = rs_u[j]; p < n; p++)
+            {
+                m = j_u[p];
+                work[m] -= u_u[p]*yr;
+            }
 
-         yc = yr/dj;
-			u_u[p] = yc;
-			dk -= yr*yc;
-			nzs[j]++ ;	
-		}	
+            yc = yr/dj;
+            u_u[p] = yc;
+            dk -= yr*yc;
+            nzs[j]++ ;
+        }
 
-		if(dk >= 0.0 && fabs(dk) < 1.0e-20)	dk = 1.0e-20;
-		if(dk < 0.0 && fabs(dk) < 1.0e-20) dk = -1.0e-20;
+        if(dk >= 0.0 && fabs(dk) < 1.0e-20)	dk = 1.0e-20;
+        if(dk < 0.0 && fabs(dk) < 1.0e-20) dk = -1.0e-20;
 
-		d_u[i] = dk;
-	}
+        d_u[i] = dk;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////
-// å‡½ æ•° å:          //LE_FBackwardSym
-// æ    è¿°:          //å¯¹ç§°çŸ©é˜µå‰æ¨å›ä»£æ–¹æ³•æ±‚è§£æ–¹ç¨‹ç»„
-                      //
-// è¾“å…¥å‚æ•°:          // Ué˜µç»“æ„åŠUé˜µå€¼ï¼Œå³ç«¯é¡¹b
-// è¾“å‡ºå‚æ•°:          // å³ç«¯é¡¹xï¼Œç»´æ•°ä¸ºpUçš„ç»´æ•°ï¼ˆè§£å‘é‡ï¼‰
-// è¿” å› å€¼:          // æ— 
-// å…¶    ä»–:          // ä¸ä¼šå½±å“Ué˜µä¸­çŸ©é˜µçš„ä»»ä½•ä¿¡æ¯,created by xdc 2014/6/16
+// º¯ Êı Ãû:          //LE_FBackwardSym
+// Ãè    Êö:          //¶Ô³Æ¾ØÕóÇ°ÍÆ»Ø´ú·½·¨Çó½â·½³Ì×é
+//
+// ÊäÈë²ÎÊı:          // UÕó½á¹¹¼°UÕóÖµ£¬ÓÒ¶ËÏîb
+// Êä³ö²ÎÊı:          // ÓÒ¶ËÏîx£¬Î¬ÊıÎªpUµÄÎ¬Êı£¨½âÏòÁ¿£©
+// ·µ »Ø Öµ:          // ÎŞ
+// Æä    Ëû:          // ²»»áÓ°ÏìUÕóÖĞ¾ØÕóµÄÈÎºÎĞÅÏ¢,created by xdc 2014/6/16
 //////////////////////////////////////////////////////////////////////
 void LE_FBackwardSym(SprsUMatRealStru *pFU,double b[],double x[])
 {
-   int i,j,k;
-	int ks,ke;
-   int iDim;
-   int *rs_u,*j_u;
-   double *d_u,*u_u;
-   double xc;
+    int i,j,k;
+    int ks,ke;
+    int iDim;
+    int *rs_u,*j_u;
+    double *d_u,*u_u;
+    double xc;
 
-   d_u=pFU->d_u;
-   u_u=pFU->u_u;
-   rs_u=pFU->uMax.rs_u;
-   j_u=pFU->uMax.j_u;
-   iDim=pFU->uMax.iDim;
+    d_u=pFU->d_u;
+    u_u=pFU->u_u;
+    rs_u=pFU->uMax.rs_u;
+    j_u=pFU->uMax.j_u;
+    iDim=pFU->uMax.iDim;
 
-   for(i = 1; i <= iDim; i++)
-      x[i] = b[i];
+    for(i = 1; i <= iDim; i++)
+        x[i] = b[i];
 
-	for(i = 1; i <= iDim; i++)
-	{
-		xc = x[i];
-		ks = rs_u[i];
-		ke = rs_u[i+1];
+    for(i = 1; i <= iDim; i++)
+    {
+        xc = x[i];
+        ks = rs_u[i];
+        ke = rs_u[i+1];
 
-		for(k = ks; k < ke; k ++)
-		{
-			j = j_u[k];
-			x[j] -= u_u[k]*xc;
-		}
-	}
+        for(k = ks; k < ke; k ++)
+        {
+            j = j_u[k];
+            x[j] -= u_u[k]*xc;
+        }
+    }
 
-   for(i=1; i<=iDim; i++)
-      x[i] /= d_u[i];
+    for(i=1; i<=iDim; i++)
+        x[i] /= d_u[i];
 
-   for(i=iDim-1; i>=1; i--)
-   {
-		ks = rs_u[i];
-		ke = rs_u[i+1] - 1;
-      xc = x[i];
+    for(i=iDim-1; i>=1; i--)
+    {
+        ks = rs_u[i];
+        ke = rs_u[i+1] - 1;
+        xc = x[i];
 
-      for(k=ke; k>=ks; k--)
-      {
-			j = j_u[k];
-			xc -= u_u[k]*x[j];
-		}
-      x[i] = xc;
-	}
+        for(k=ke; k>=ks; k--)
+        {
+            j = j_u[k];
+            xc -= u_u[k]*x[j];
+        }
+        x[i] = xc;
+    }
 }
 
 
 //////////////////////////////////////////////////////////////////////
-// å‡½ æ•° å:          //initMem_UMatReal
-// æ    è¿°:          //å†…å­˜åˆå§‹åŒ–ã€‚æ•°ç›®ã€æŒ‡é’ˆå˜é‡ç½®é›¶
-                      //
-// è¾“å…¥å‚æ•°:          // U
-// è¾“å‡ºå‚æ•°:          // 
-// è¿” å› å€¼:          // æ— 
-// å…¶    ä»–:          // writed by xdc 2014/6/16
+// º¯ Êı Ãû:          //initMem_UMatReal
+// Ãè    Êö:          //ÄÚ´æ³õÊ¼»¯¡£ÊıÄ¿¡¢Ö¸Õë±äÁ¿ÖÃÁã
+//
+// ÊäÈë²ÎÊı:          // U
+// Êä³ö²ÎÊı:          //
+// ·µ »Ø Öµ:          // ÎŞ
+// Æä    Ëû:          // writed by xdc 2014/6/16
 //////////////////////////////////////////////////////////////////////
 void initMem_UMatReal(SprsUMatRealStru *U)
 {
-   U->d_u=NULL;
-   U->u_u=NULL;
-   U->nzs=NULL;
-   U->work=NULL;
-   U->uMax.cs_u=NULL;
-   U->uMax.rs_u=NULL;
-   U->uMax.r_u=NULL;
-   U->uMax.j_u=NULL;
-   U->uMax.iDim=0;
-   U->uMax.iNzs=0;
+    U->d_u=NULL;
+    U->u_u=NULL;
+    U->nzs=NULL;
+    U->work=NULL;
+    U->uMax.cs_u=NULL;
+    U->uMax.rs_u=NULL;
+    U->uMax.r_u=NULL;
+    U->uMax.j_u=NULL;
+    U->uMax.iDim=0;
+    U->uMax.iNzs=0;
 }
 
 //////////////////////////////////////////////////////////////////////
-// å‡½ æ•° å:          //deallocate_UMatReal
-// æ    è¿°:          //æŒ‡é’ˆå˜é‡å†…å­˜é‡Šæ”¾
-                      //
-// è¾“å…¥å‚æ•°:          // U
-// è¾“å‡ºå‚æ•°:          // 
-// è¿” å› å€¼:          // æ— 
-// å…¶    ä»–:          // writed by xdc 2014/6/16
+// º¯ Êı Ãû:          //deallocate_UMatReal
+// Ãè    Êö:          //Ö¸Õë±äÁ¿ÄÚ´æÊÍ·Å
+//
+// ÊäÈë²ÎÊı:          // U
+// Êä³ö²ÎÊı:          //
+// ·µ »Ø Öµ:          // ÎŞ
+// Æä    Ëû:          // writed by xdc 2014/6/16
 //////////////////////////////////////////////////////////////////////
 void deallocate_UMatReal(SprsUMatRealStru *U)
 {
-   free(U->d_u);
-   free(U->u_u);
-   free(U->nzs);
-   free(U->work);
-   free(U->uMax.cs_u);
-   free(U->uMax.rs_u);
-   free(U->uMax.r_u);
-   free(U->uMax.j_u);
-   initMem_UMatReal(U);  
+    free(U->d_u);
+    free(U->u_u);
+    free(U->nzs);
+    free(U->work);
+    free(U->uMax.cs_u);
+    free(U->uMax.rs_u);
+    free(U->uMax.r_u);
+    free(U->uMax.j_u);
+    initMem_UMatReal(U);
 }
 

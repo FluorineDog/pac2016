@@ -6,518 +6,538 @@
 #include<string.h>
 #include<ctype.h>
 #include <time.h>
+//add by wsh 2017.7.31
+#include<linux/types.h>
+#define F 1.4E3
+#define Time 1E6
+inline unsigned long long rdtsc(void)
+{
+    unsigned long hi = 0, lo = 0;
 
-//ä»æ–‡ä»¶ä¸­è¯»å–ï¼Œå½¢æˆAçŸ©é˜µ,0-æˆåŠŸï¼Œå…¶ä»–-å¤±è´¥
+    __asm__ __volatile__ ("lfence;rdtsc" : "=a"(lo), "=d"(hi));
+
+    return (((unsigned long long)lo))|(((unsigned long long)hi)<<32);
+}
+//add end by wsh 2017.7.31
+//´ÓÎÄ¼şÖĞ¶ÁÈ¡£¬ĞÎ³ÉA¾ØÕó,0-³É¹¦£¬ÆäËû-Ê§°Ü
 int ReadMatrixA(SprsMatRealStru *A, char* filename)
 {
-	FILE * fp=NULL;
-	char LineBuffer[1024];
-	char *line;
-	int i,first,last;
-	if (!A)
-	{
-		fprintf(stderr,"ReadMatrixA():NULL arguments!\n");
-		return -1;
-	}
+    FILE * fp=NULL;
+    char LineBuffer[1024];
+    char *line;
+    int i,first,last;
+    if (!A)
+    {
+        fprintf(stderr,"ReadMatrixA():NULL arguments!\n");
+        return -1;
+    }
 
-	fp = fopen(filename,"rb");
-	if (!fp)
-	{
-		fprintf(stderr,"ReadMatrixA():OPen file failed!\n");
-		return -2;
-	}
+    fp = fopen(filename,"rb");
+    if (!fp)
+    {
+        fprintf(stderr,"ReadMatrixA():OPen file failed!\n");
+        return -2;
+    }
 
-	fgets(LineBuffer, 1024, fp);
+    fgets(LineBuffer, 1024, fp);
 
-	if (fscanf(fp, "%d %d %d\n", &(A->Mat.iDim), &(A->Mat.iNy), &(A->Mat.iNymax)) != 3)
-	{
-		fprintf(stderr,"ReadMatrixA():read error...!\n");
-		return -3;
-	}
+    if (fscanf(fp, "%d %d %d\n", &(A->Mat.iDim), &(A->Mat.iNy), &(A->Mat.iNymax)) != 3)
+    {
+        fprintf(stderr,"ReadMatrixA():read error...!\n");
+        return -3;
+    }
 
-	if (A->Mat.iDim < 0 || A->Mat.iNy < 0 || A->Mat.iNymax < 0)
-	{
-		fprintf(stderr, "ReadMatrixA():read error!\n");
-		return -4;
-	}
-	allocate_MatReal(A);
-	memset(LineBuffer,0,1024);
-	fgets(LineBuffer, 1024, fp);
-	for (i = 0; i < A->Mat.iNymax+1; i++)
-	{
-		if (fscanf(fp, "%d\n", &(A->Mat.piJno[i])) != 1)
-		{
-			fprintf(stderr, "ReadMatrixA():read error!\n");
-			return -5;
-		}
-	}
-	memset(LineBuffer, 0, 1024);
-	fgets(LineBuffer, 1024, fp);
-	for (i = 0; i < A->Mat.iDim+2; i++)
-	{
-		if (fscanf(fp, "%d\n", &(A->Mat.piIstart[i])) != 1)
-		{
-			fprintf(stderr, "ReadMatrixA():read error!\n");
-			return -5;
-		}
-	}
-	memset(LineBuffer, 0, 1024);
-	fgets(LineBuffer, 1024, fp);
-	for (i = 0; i < A->Mat.iDim + 1; i++)
-	{
-		if (fscanf(fp, "%d\n", &(A->Mat.piIdiag[i])) != 1)
-		{
-			fprintf(stderr, "ReadMatrixA():read error!\n");
-			return -5;
-		}
-	}
-	memset(LineBuffer, 0, 1024);
-	fgets(LineBuffer, 1024, fp);
-	for (i = 0; i < A->Mat.iNymax + 1; i++)
-	{
-		if (fscanf(fp, "%d\n", &(A->Mat.piLinkp[i])) != 1)
-		{
-			fprintf(stderr, "ReadMatrixA():read error!\n");
-			return -5;
-		}
-	}
-	memset(LineBuffer, 0, 1024);
-	fgets(LineBuffer, 1024, fp);
-	for (i = 0; i < A->Mat.iNymax + 1; i++)
-	{
-		if (fscanf(fp, "%d\n", &(A->Mat.piLinkn[i])) != 1)
-		{
-			fprintf(stderr, "ReadMatrixA():read error!\n");
-			return -5;
-		}
-	}
-	memset(LineBuffer, 0, 1024);
-	fgets(LineBuffer, 1024, fp);
-	for (i = 0; i < A->Mat.iNymax + 1; i++)
-	{
-		if (fscanf(fp, "%lf\n", &(A->pdVal[i])) != 1)
-		{
-			fprintf(stderr, "ReadMatrixA():read error!\n");
-			return -5;
-		}
-	}
-	return 0;
+    if (A->Mat.iDim < 0 || A->Mat.iNy < 0 || A->Mat.iNymax < 0)
+    {
+        fprintf(stderr, "ReadMatrixA():read error!\n");
+        return -4;
+    }
+    allocate_MatReal(A);
+    memset(LineBuffer,0,1024);
+    fgets(LineBuffer, 1024, fp);
+    for (i = 0; i < A->Mat.iNymax+1; i++)
+    {
+        if (fscanf(fp, "%d\n", &(A->Mat.piJno[i])) != 1)
+        {
+            fprintf(stderr, "ReadMatrixA():read error!\n");
+            return -5;
+        }
+    }
+    memset(LineBuffer, 0, 1024);
+    fgets(LineBuffer, 1024, fp);
+    for (i = 0; i < A->Mat.iDim+2; i++)
+    {
+        if (fscanf(fp, "%d\n", &(A->Mat.piIstart[i])) != 1)
+        {
+            fprintf(stderr, "ReadMatrixA():read error!\n");
+            return -5;
+        }
+    }
+    memset(LineBuffer, 0, 1024);
+    fgets(LineBuffer, 1024, fp);
+    for (i = 0; i < A->Mat.iDim + 1; i++)
+    {
+        if (fscanf(fp, "%d\n", &(A->Mat.piIdiag[i])) != 1)
+        {
+            fprintf(stderr, "ReadMatrixA():read error!\n");
+            return -5;
+        }
+    }
+    memset(LineBuffer, 0, 1024);
+    fgets(LineBuffer, 1024, fp);
+    for (i = 0; i < A->Mat.iNymax + 1; i++)
+    {
+        if (fscanf(fp, "%d\n", &(A->Mat.piLinkp[i])) != 1)
+        {
+            fprintf(stderr, "ReadMatrixA():read error!\n");
+            return -5;
+        }
+    }
+    memset(LineBuffer, 0, 1024);
+    fgets(LineBuffer, 1024, fp);
+    for (i = 0; i < A->Mat.iNymax + 1; i++)
+    {
+        if (fscanf(fp, "%d\n", &(A->Mat.piLinkn[i])) != 1)
+        {
+            fprintf(stderr, "ReadMatrixA():read error!\n");
+            return -5;
+        }
+    }
+    memset(LineBuffer, 0, 1024);
+    fgets(LineBuffer, 1024, fp);
+    for (i = 0; i < A->Mat.iNymax + 1; i++)
+    {
+        if (fscanf(fp, "%lf\n", &(A->pdVal[i])) != 1)
+        {
+            fprintf(stderr, "ReadMatrixA():read error!\n");
+            return -5;
+        }
+    }
+    return 0;
 }
-//å°†AçŸ©é˜µå†™å…¥æ–‡ä»¶,0-æˆåŠŸï¼Œå…¶ä»–-å¤±è´¥
+//½«A¾ØÕóĞ´ÈëÎÄ¼ş,0-³É¹¦£¬ÆäËû-Ê§°Ü
 int WriteMatrixA(SprsMatRealStru *A, char* filename)
 {
-	FILE *fp=NULL;
-	int i;
-	char LineBuffer[1024];
+    FILE *fp=NULL;
+    int i;
+    char LineBuffer[1024];
 
-	if (!A)
-	{
-		fprintf(stderr,"WriteMatrixA:NULL arguments!\n");
-		return -1;
-	}
-	
-	fp = fopen(filename, "wb");
-	if (!fp)
-	{
-		fprintf(stderr, "WriteMatrixA:open failed\n");
-		return -2;
-	}
-	strcpy(LineBuffer, "SparsMatRealStruA.idm,SparsMatRealStruA.iNy,SparsMatRealStruA.iNymax");
-	fprintf(fp,"%s\n",LineBuffer);
-	if (A->Mat.iDim < 0 || A->Mat.iNy < 0 || A->Mat.iNymax < 0)
-	{
-		fprintf(stderr, "WriteMatrixA: input error\n");
-		return -2;
-	}
+    if (!A)
+    {
+        fprintf(stderr,"WriteMatrixA:NULL arguments!\n");
+        return -1;
+    }
 
-	fprintf(fp,"%d %d %d\n",A->Mat.iDim,A->Mat.iNy,A->Mat.iNymax);
+    fp = fopen(filename, "wb");
+    if (!fp)
+    {
+        fprintf(stderr, "WriteMatrixA:open failed\n");
+        return -2;
+    }
+    strcpy(LineBuffer, "SparsMatRealStruA.idm,SparsMatRealStruA.iNy,SparsMatRealStruA.iNymax");
+    fprintf(fp,"%s\n",LineBuffer);
+    if (A->Mat.iDim < 0 || A->Mat.iNy < 0 || A->Mat.iNymax < 0)
+    {
+        fprintf(stderr, "WriteMatrixA: input error\n");
+        return -2;
+    }
 
-	memset(LineBuffer,0,1024);
-	sprintf(LineBuffer,"SparsMatRealStruA->piJno,size=%d",A->Mat.iNymax+1);
-	fprintf(fp,"%s\n",LineBuffer);
-	if (A->Mat.piJno != NULL)
-	{
-		for (i = 0; i < A->Mat.iNymax + 1; i++)
-		{
-			fprintf(fp, "%d\n", A->Mat.piJno[i]);
-		}
-	}
-	else{
-		fprintf(stderr,"WriteMatrixA:input value NULL!\n");
-		return -3;
-	}
-	memset(LineBuffer, 0, 1024);
-	sprintf(LineBuffer, "SparsMatRealStruA->piIstart,size=%d", A->Mat.iDim + 2);
-	fprintf(fp, "%s\n", LineBuffer);
-	if (A->Mat.piIstart != NULL)
-	{
-		for (i = 0; i < A->Mat.iDim + 2; i++)
-		{
-			fprintf(fp, "%d\n", A->Mat.piIstart[i]);
-		}
-	}else
-		return -4;
-	memset(LineBuffer, 0, 1024);
-	sprintf(LineBuffer, "SparsMatRealStruA->piIdiag,size=%d", A->Mat.iDim + 1);
-	fprintf(fp, "%s\n", LineBuffer);
-	if (A->Mat.piIdiag != NULL)
-	{
-		for (i = 0; i < A->Mat.iDim + 1; i++)
-		{
-			fprintf(fp, "%d\n", A->Mat.piIdiag[i]);
-		}
-	}else
-		return -5;
-	memset(LineBuffer, 0, 1024);
-	sprintf(LineBuffer, "SparsMatRealStruA->piLinkp,size=%d", A->Mat.iNymax + 1);
-	fprintf(fp, "%s\n", LineBuffer);
-	if (A->Mat.piLinkp != NULL)
-	{
-		for (i = 0; i < A->Mat.iNymax + 1; i++)
-		{
-			fprintf(fp, "%d\n", A->Mat.piLinkp[i]);
-		}
-	}else
-		return -6;
-	memset(LineBuffer, 0, 1024);
-	sprintf(LineBuffer, "SparsMatRealStruA->piLinkn,size=%d", A->Mat.iNymax + 1);
-	fprintf(fp, "%s\n", LineBuffer);
-	if (A->Mat.piLinkn != NULL)
-	{
-		for (i = 0; i < A->Mat.iNymax + 1; i++)
-		{
-			fprintf(fp, "%d\n", A->Mat.piLinkn[i]);
-		}
-	}else
-		return -7;
-	memset(LineBuffer, 0, 1024);
-	sprintf(LineBuffer, "SparsMatRealStruA->pdval,size=%d", A->Mat.iNymax + 1);
-	fprintf(fp, "%s\n", LineBuffer);
-	if (A->pdVal != NULL)
-	{
-		for (i = 0; i < A->Mat.iNymax + 1; i++)
-		{
-			fprintf(fp, "%22.15e\n", A->pdVal[i]);
-		}
-	}
+    fprintf(fp,"%d %d %d\n",A->Mat.iDim,A->Mat.iNy,A->Mat.iNymax);
 
-	fclose(fp);
-	return 0;
+    memset(LineBuffer,0,1024);
+    sprintf(LineBuffer,"SparsMatRealStruA->piJno,size=%d",A->Mat.iNymax+1);
+    fprintf(fp,"%s\n",LineBuffer);
+    if (A->Mat.piJno != NULL)
+    {
+        for (i = 0; i < A->Mat.iNymax + 1; i++)
+        {
+            fprintf(fp, "%d\n", A->Mat.piJno[i]);
+        }
+    }
+    else{
+        fprintf(stderr,"WriteMatrixA:input value NULL!\n");
+        return -3;
+    }
+    memset(LineBuffer, 0, 1024);
+    sprintf(LineBuffer, "SparsMatRealStruA->piIstart,size=%d", A->Mat.iDim + 2);
+    fprintf(fp, "%s\n", LineBuffer);
+    if (A->Mat.piIstart != NULL)
+    {
+        for (i = 0; i < A->Mat.iDim + 2; i++)
+        {
+            fprintf(fp, "%d\n", A->Mat.piIstart[i]);
+        }
+    }else
+        return -4;
+    memset(LineBuffer, 0, 1024);
+    sprintf(LineBuffer, "SparsMatRealStruA->piIdiag,size=%d", A->Mat.iDim + 1);
+    fprintf(fp, "%s\n", LineBuffer);
+    if (A->Mat.piIdiag != NULL)
+    {
+        for (i = 0; i < A->Mat.iDim + 1; i++)
+        {
+            fprintf(fp, "%d\n", A->Mat.piIdiag[i]);
+        }
+    }else
+        return -5;
+    memset(LineBuffer, 0, 1024);
+    sprintf(LineBuffer, "SparsMatRealStruA->piLinkp,size=%d", A->Mat.iNymax + 1);
+    fprintf(fp, "%s\n", LineBuffer);
+    if (A->Mat.piLinkp != NULL)
+    {
+        for (i = 0; i < A->Mat.iNymax + 1; i++)
+        {
+            fprintf(fp, "%d\n", A->Mat.piLinkp[i]);
+        }
+    }else
+        return -6;
+    memset(LineBuffer, 0, 1024);
+    sprintf(LineBuffer, "SparsMatRealStruA->piLinkn,size=%d", A->Mat.iNymax + 1);
+    fprintf(fp, "%s\n", LineBuffer);
+    if (A->Mat.piLinkn != NULL)
+    {
+        for (i = 0; i < A->Mat.iNymax + 1; i++)
+        {
+            fprintf(fp, "%d\n", A->Mat.piLinkn[i]);
+        }
+    }else
+        return -7;
+    memset(LineBuffer, 0, 1024);
+    sprintf(LineBuffer, "SparsMatRealStruA->pdval,size=%d", A->Mat.iNymax + 1);
+    fprintf(fp, "%s\n", LineBuffer);
+    if (A->pdVal != NULL)
+    {
+        for (i = 0; i < A->Mat.iNymax + 1; i++)
+        {
+            fprintf(fp, "%22.15e\n", A->pdVal[i]);
+        }
+    }
+
+    fclose(fp);
+    return 0;
 }
-//ä»æ–‡ä»¶ä¸­è¯»å–ï¼Œå½¢æˆBå‘é‡æ•°ç»„,0-æˆåŠŸï¼Œå…¶ä»–-å¤±è´¥
-//Bæ˜¯æŒ‡é’ˆæ•°ç»„ï¼Œä¼ å…¥NULLæŒ‡é’ˆï¼Œå‡½æ•°æ‰§è¡Œå®Œæˆåï¼ŒæŒ‡é’ˆéNULL
-//nsizeæ˜¯æŒ‡é’ˆæ•°ç»„çš„ç»´æ•°ï¼Œä¼ å…¥0æˆ–è€…ä»»æ„å€¼ï¼Œä¼ å‡ºæŒ‡é’ˆæ•°ç»„ç»´æ•°
+//´ÓÎÄ¼şÖĞ¶ÁÈ¡£¬ĞÎ³ÉBÏòÁ¿Êı×é,0-³É¹¦£¬ÆäËû-Ê§°Ü
+//BÊÇÖ¸ÕëÊı×é£¬´«ÈëNULLÖ¸Õë£¬º¯ÊıÖ´ĞĞÍê³Éºó£¬Ö¸Õë·ÇNULL
+//nsizeÊÇÖ¸ÕëÊı×éµÄÎ¬Êı£¬´«Èë0»òÕßÈÎÒâÖµ£¬´«³öÖ¸ÕëÊı×éÎ¬Êı
 int ReadVectorB(VecRealStru **B, int &nsize, char* filename)
 {
-	FILE * fp=NULL;
-	int i,j,m,tnsize;
-	double val;
-	int tNy;
-	char LineBuffer[1024];
+    FILE * fp=NULL;
+    int i,j,m,tnsize;
+    double val;
+    int tNy;
+    char LineBuffer[1024];
 
-	fp = fopen(filename,"rb");
-	if (!fp)
-	{
-		fprintf(stderr,"ReadVectorB:open error!\n");
-		return -1;
-	}
-	*B = new VecRealStru[nsize];
-	for (i = 0; i < nsize; i++)
-	{
-		memset(LineBuffer,0,1024);
-		fgets(LineBuffer,1024,fp);
-		if (fscanf(fp, "%d\n", &tnsize) != 1)
-		{
-			fprintf(stderr,"ReadVectorB:read error!\n");
-			return -2;
-		}
-		if (nsize != tnsize)
-		{	
-			fprintf(stderr, "ReadVectorB: nsize error!\n");
-			return -3;
-		}
-		memset(LineBuffer, 0, 1024);
-		fgets(LineBuffer, 1024, fp);
-		if (fscanf(fp, "%d\n", &tNy) != 1)
-		{
-			fprintf(stderr, "ReadVectorB:read error!\n");
-			return -2;
-		}
-		
-		((*B)+i)->iNy = tNy;
-		((*B)+i)->pdVal = new double[((*B)+i)->iNy + 1];
-	
-		memset(LineBuffer, 0, 1024);
-		fgets(LineBuffer, 1024, fp);
-		for (j = 0; j < ((*B)+i)->iNy+1; j++)
-		{
-			if (fscanf(fp, "%lf\n", &val) != 1)
-			{
-				fprintf(stderr, "ReadVectorB:read error!\n");
-				return -2;
-			}
-			((*B)+i)->pdVal[j] = val;
-			val = 0;
-			
-		}
+    fp = fopen(filename,"rb");
+    if (!fp)
+    {
+        fprintf(stderr,"ReadVectorB:open error!\n");
+        return -1;
+    }
+    *B = new VecRealStru[nsize];
+    for (i = 0; i < nsize; i++)
+    {
+        memset(LineBuffer,0,1024);
+        fgets(LineBuffer,1024,fp);
+        if (fscanf(fp, "%d\n", &tnsize) != 1)
+        {
+            fprintf(stderr,"ReadVectorB:read error!\n");
+            return -2;
+        }
+        if (nsize != tnsize)
+        {
+            fprintf(stderr, "ReadVectorB: nsize error!\n");
+            return -3;
+        }
+        memset(LineBuffer, 0, 1024);
+        fgets(LineBuffer, 1024, fp);
+        if (fscanf(fp, "%d\n", &tNy) != 1)
+        {
+            fprintf(stderr, "ReadVectorB:read error!\n");
+            return -2;
+        }
 
-	}
-	fclose(fp);
-	return 0;
+        ((*B)+i)->iNy = tNy;
+        ((*B)+i)->pdVal = new double[((*B)+i)->iNy + 1];
 
-	
+        memset(LineBuffer, 0, 1024);
+        fgets(LineBuffer, 1024, fp);
+        for (j = 0; j < ((*B)+i)->iNy+1; j++)
+        {
+            if (fscanf(fp, "%lf\n", &val) != 1)
+            {
+                fprintf(stderr, "ReadVectorB:read error!\n");
+                return -2;
+            }
+            ((*B)+i)->pdVal[j] = val;
+            val = 0;
+
+        }
+
+    }
+    fclose(fp);
+    return 0;
+
+
 }
-//å°†Bå‘é‡æ•°ç»„å†™å…¥æ–‡ä»¶,0-æˆåŠŸï¼Œå…¶ä»–-å¤±è´¥
-//Bæ˜¯æŒ‡é’ˆæ•°ç»„ï¼Œä¼ å…¥éNULLæŒ‡é’ˆï¼Œå‡½æ•°æ‰§è¡Œè¿‡ç¨‹ä¸­ä¸å¾—ä¿®æ”¹Bçš„å†…å®¹
-//nsizeæ˜¯æŒ‡é’ˆæ•°ç»„çš„ç»´æ•°ï¼Œä¼ å…¥ç»´æ•°ï¼Œå‡½æ•°æ‰§è¡Œè¿‡ç¨‹ä¸­ä¸å¾—ä¿®æ”¹
+//½«BÏòÁ¿Êı×éĞ´ÈëÎÄ¼ş,0-³É¹¦£¬ÆäËû-Ê§°Ü
+//BÊÇÖ¸ÕëÊı×é£¬´«Èë·ÇNULLÖ¸Õë£¬º¯ÊıÖ´ĞĞ¹ı³ÌÖĞ²»µÃĞŞ¸ÄBµÄÄÚÈİ
+//nsizeÊÇÖ¸ÕëÊı×éµÄÎ¬Êı£¬´«ÈëÎ¬Êı£¬º¯ÊıÖ´ĞĞ¹ı³ÌÖĞ²»µÃĞŞ¸Ä
 int WriteVectorB(VecRealStru *B, int nsize, char* filename)
 {
-	FILE *fp = NULL;
-	int i, j;
-	char LineBuffer[1024];
-	fp = fopen(filename, "ab+");
-	if (!fp)
-	{
-		fprintf(stderr,"WriteVectorB:open failed!\n");
-		return -1;
-	}
+    FILE *fp = NULL;
+    int i, j;
+    char LineBuffer[1024];
+    fp = fopen(filename, "ab+");
+    if (!fp)
+    {
+        fprintf(stderr,"WriteVectorB:open failed!\n");
+        return -1;
+    }
 
-	sprintf(LineBuffer,"Vector nsize");
-	fprintf(fp, "%s\n",LineBuffer);
-	fprintf(fp,"%d\n",nsize);
-	
-	memset(LineBuffer,0,1024);
-	sprintf(LineBuffer,"VecReadStruN->iNy");
-	fprintf(fp,"%s\n",LineBuffer);
-	fprintf(fp, "%d\n", B->iNy);
+    sprintf(LineBuffer,"Vector nsize");
+    fprintf(fp, "%s\n",LineBuffer);
+    fprintf(fp,"%d\n",nsize);
 
-	memset(LineBuffer, 0, 1024);
-	sprintf(LineBuffer, "VecReadStruN->pdval,size=%d",B->iNy+1);
-	fprintf(fp, "%s\n", LineBuffer);
-	for (j = 0; j < B->iNy + 1; j++)
-	{
-		fprintf(fp, "%22.15e\n", B->pdVal[j]);
-	}
+    memset(LineBuffer,0,1024);
+    sprintf(LineBuffer,"VecReadStruN->iNy");
+    fprintf(fp,"%s\n",LineBuffer);
+    fprintf(fp, "%d\n", B->iNy);
 
-	fclose(fp);
-	return 0;
+    memset(LineBuffer, 0, 1024);
+    sprintf(LineBuffer, "VecReadStruN->pdval,size=%d",B->iNy+1);
+    fprintf(fp, "%s\n", LineBuffer);
+    for (j = 0; j < B->iNy + 1; j++)
+    {
+        fprintf(fp, "%22.15e\n", B->pdVal[j]);
+    }
+
+    fclose(fp);
+    return 0;
 }
+//XÏòÁ¿Êı×é¶ÁÈ¡ÎÄ¼ş£¬0³É¹¦£¬ÆäËûÊ§°Ü
+//XÊäÈëÏòÁ¿Êı×é£¬nsizeÊÇÖ¸ÕëÊı×éµÄÎ¬Êı£¬filenameÊÇÎÄ¼şÃû×Ö
 int ReadVectorX(VecRealStru *X,int &nsize,char *filename)
 {
-	FILE * fp=NULL;
-	int i,j,m,tnsize;
-	double val;
-	int tNy;
-	char LineBuffer[1024];
+    FILE * fp=NULL;
+    int i,j,m,tnsize;
+    double val;
+    int tNy;
+    char LineBuffer[1024];
 
-	fp = fopen(filename,"rb");
-	if (!fp)
-	{
-		fprintf(stderr,"ReadVectorX:open error!\n");
-		return -1;
-	}
-	fgets(LineBuffer,1024,fp);
-	if (fscanf(fp, "%d\n", &tnsize) != 1)
-	{
-		fprintf(stderr, "ReadVectorX:read error!\n");
-		return -2;
-	}
-	if(nsize!=tnsize)
-	{
-		fprintf(stderr, "ReadVectorX:read size err!\n");
-		return -3;	
-	}
-	memset(LineBuffer,0,1024);
-	fgets(LineBuffer,1024,fp);
-	for (i = 0; i < tnsize;i++)
-	if(fscanf(fp, "%d\n", &(X[i].iNy))!=1)
-	{
-		fprintf(stderr, "ReadVectorX:read error!\n");
-		return -2;
-	}
-//	memset(LineBuffer,0,1024);
-//	fgets(LineBuffer,1024,fp);
-	for (i = 0; i < nsize; i++)
-	{
-		memset(LineBuffer, 0, 1024);
-		fgets(LineBuffer,1024,fp);
-		for (j = 0; j < X[i].iNy + 1; j++)
-		{
-			fscanf(fp, "%lf\n", &(X[i].pdVal[j]));
-		}
-	}
-	fclose(fp);
+    fp = fopen(filename,"rb");
+    if (!fp)
+    {
+        fprintf(stderr,"ReadVectorX:open error!\n");
+        return -1;
+    }
+    fgets(LineBuffer,1024,fp);
+    if (fscanf(fp, "%d\n", &tnsize) != 1)
+    {
+        fprintf(stderr, "ReadVectorX:read error!\n");
+        return -2;
+    }
+    if(nsize!=tnsize)
+    {
+        fprintf(stderr, "ReadVectorX:read size err!\n");
+        return -3;
+    }
+    memset(LineBuffer,0,1024);
+    fgets(LineBuffer,1024,fp);
+    for (i = 0; i < tnsize;i++)
+        if(fscanf(fp, "%d\n", &(X[i].iNy))!=1)
+        {
+            fprintf(stderr, "ReadVectorX:read error!\n");
+            return -2;
+        }
+    //	memset(LineBuffer,0,1024);
+    //	fgets(LineBuffer,1024,fp);
+    for (i = 0; i < nsize; i++)
+    {
+        memset(LineBuffer, 0, 1024);
+        fgets(LineBuffer,1024,fp);
+        for (j = 0; j < X[i].iNy + 1; j++)
+        {
+            fscanf(fp, "%lf\n", &(X[i].pdVal[j]));
+        }
+    }
+    fclose(fp);
 
-	return 0;
+    return 0;
 }
+//¶ÁÈ¡X.txt²¢±È½ÏÖ´ĞĞËãÀıºóµÄ½á¹ûÓë´ÓX.txtµÄ½á¹ûµÄÎó²îÊÇ·ñ·ûºÏÒªÇó£¬²»·ûºÏÒªÇó£¬¼ÇÂ¼log.txtÖĞ
 int CompareVectorX(VecRealStru *X,int &nsize,VecRealStru *result)
 {
-	int i,j,num;
-	FILE *fp;
-	fp=fopen("log.txt","wb");
-	num=0;
+    int i,j,num;
+    FILE *fp;
+    fp=fopen("log.txt","wb");
+    num=0;
 
-	 if(0>ReadVectorX(X,nsize,"X.txt"))
-	 {
-		return -1;
-	 }
+    if(0>ReadVectorX(X,nsize,"X.txt"))
+    {
+        return -1;
+    }
 
-	 for(i=0;i<nsize;i++)
-	 {
-		 for(j=0;j<X[i].iNy+1;j++)
-		 {
-			if((X[i].pdVal[j]-result[i].pdVal[j]>1e-9)||(result[i].pdVal[j]-X[i].pdVal[j]>1e-9))
-			{
-				fprintf(fp,"matrix dimensions=%dColumn number matrix =%d,reference results=%22.15e,running result:%22.15e\n",i,j,X[i].pdVal[j],result[i].pdVal[j]);
-			num++;				
-			}
+    for(i=0;i<nsize;i++)
+    {
+        for(j=0;j<X[i].iNy+1;j++)
+        {
+            if((X[i].pdVal[j]-result[i].pdVal[j]>1e-9)||(result[i].pdVal[j]-X[i].pdVal[j]>1e-9))
+            {
+                fprintf(fp,"matrix dimensions=%dColumn number matrix =%d,reference results=%22.15e,running result:%22.15e\n",i,j,X[i].pdVal[j],result[i].pdVal[j]);
+                num++;
+            }
 
-		 }
+        }
 
-	 }
-	 if(num>0)
-	 {
-		 printf(" result exceed the set reference value  %d,please see the log.txt\n",num);
-		 return -1;
-	 }
-	 printf("the result up to standard\n");
-	 fclose(fp);
-	 return 0;
+    }
+    if(num>0)
+    {
+        printf(" result exceed the set reference value  %d,please see the log.txt\n",num);
+        return -1;
+    }
+    printf("the result up to standard\n");
+    fclose(fp);
+    return 0;
 }
 
 int WriteVectorX(VecRealStru *X, int nsize, char * filename)
 {
-	FILE *fp = NULL;
-	int i, j;
-	char LineBuffer[1024];
-	fp = fopen(filename, "wb");
-	if (!fp)
-	{
-		fprintf(stderr, "WriteVectorB:open failed!\n");
-		return -1;
-	}
+    FILE *fp = NULL;
+    int i, j;
+    char LineBuffer[1024];
+    fp = fopen(filename, "wb");
+    if (!fp)
+    {
+        fprintf(stderr, "WriteVectorB:open failed!\n");
+        return -1;
+    }
 
-	sprintf(LineBuffer, "Vector nsize");
-	fprintf(fp, "%s\n", LineBuffer);
-	fprintf(fp, "%d\n", nsize);
+    sprintf(LineBuffer, "Vector nsize");
+    fprintf(fp, "%s\n", LineBuffer);
+    fprintf(fp, "%d\n", nsize);
 
-	memset(LineBuffer, 0, 1024);
-	sprintf(LineBuffer, "VecReadStruN->iNy");
-	fprintf(fp, "%s\n", LineBuffer);
-	for (i = 0; i < nsize;i++)
-	fprintf(fp, "%d\n", X[i].iNy);
+    memset(LineBuffer, 0, 1024);
+    sprintf(LineBuffer, "VecReadStruN->iNy");
+    fprintf(fp, "%s\n", LineBuffer);
+    for (i = 0; i < nsize;i++)
+        fprintf(fp, "%d\n", X[i].iNy);
 
-	
-	for (i = 0; i < nsize; i++)
-	{
-		memset(LineBuffer, 0, 1024);
-		sprintf(LineBuffer, "VecReadStruN->pdval,size=%d", X[i].iNy + 1);
-		fprintf(fp, "%s\n", LineBuffer);
-		for (j = 0; j < X[i].iNy + 1; j++)
-		{
-			fprintf(fp, "%22.15e\n", X[i].pdVal[j]);
-		}
-	}
-	fclose(fp);
-	return 0;
+
+    for (i = 0; i < nsize; i++)
+    {
+        memset(LineBuffer, 0, 1024);
+        sprintf(LineBuffer, "VecReadStruN->pdval,size=%d", X[i].iNy + 1);
+        fprintf(fp, "%s\n", LineBuffer);
+        for (j = 0; j < X[i].iNy + 1; j++)
+        {
+            fprintf(fp, "%22.15e\n", X[i].pdVal[j]);
+        }
+    }
+    fclose(fp);
+    return 0;
 }
 int main(int argc, char* argv[])
 {
-	clock_t timeStart;   // ä»¿çœŸå¼€å§‹æ—¶é—´
-	clock_t timeEnd;     // ä»¿çœŸç»“æŸæ—¶é—´
-    double delapseTime = 0; // ä»¿çœŸè¿‡ç¨‹èŠ±è´¹æ—¶é—´
-   //AX=B
-   SprsMatRealStru A;
-   SprsUMatRealStru U;
-   VecRealStru *X;
-   VecRealStru *B;
-   VecRealStru *Reference;
-   int nsize,i,j;
+    unsigned long long timeStart;   // ·ÂÕæ¿ªÊ¼Ê±¼ä
+    unsigned long long timeEnd;     // ·ÂÕæ½áÊøÊ±¼ä
+    double delapseTime = 0; // ·ÂÕæ¹ı³Ì»¨·ÑÊ±¼ä
+    //AX=B
+    SprsMatRealStru A;
+    SprsUMatRealStru U;
+    VecRealStru *X;
+    VecRealStru *B;
+    VecRealStru *Reference;
+    int nsize,i,j;
 
-   initMem_MatReal(&A);
-   initMem_UMatReal(&U);
-   //add by wsh
-   
-   //add end by wsh 20170621
-   //æ·»åŠ æ„å»ºAé˜µçš„è¯»å†™å‡½æ•°
-   printf("Begin ReadMatrixA...\n");
-   ReadMatrixA(&A,"A.txt");
-   printf("ReadMatrixA finish!\n");
-   ////////////////////////
+    initMem_MatReal(&A);
+    initMem_UMatReal(&U);
+    //add by wsh
 
-   //æµ‹è¯•å†™AA////////////////
-   //WriteMatrixA(&A,"AA.txt");
-   //////////////////////////
-   nsize = 10000;
- //  B = new VecRealStru[nsize];
-   printf("Begin ReadVectorB...\n");
-   //æ·»åŠ æ„å»ºBå‘é‡çš„å‡½æ•°
-   ReadVectorB(&B,nsize,"B.txt");
-   printf("ReadVectorB finish!\n");
-   ////////////////////////
-   //printf("%22.15e\n", B[1].pdVal[1]);
-   //for (i = 0; i < nsize;i++)
-	  // WriteVectorB(&B[i], nsize, "BB.txt");
+    //add end by wsh 20170621
+    //Ìí¼Ó¹¹½¨AÕóµÄ¶ÁĞ´º¯Êı
+    printf("Begin ReadMatrixA...\n");
+    ReadMatrixA(&A,"A.txt");
+    printf("ReadMatrixA finish!\n");
+    ////////////////////////
 
-//   WriteVectorX(B, nsize, "X.txt");
-   //åˆå§‹åŒ–Xæ•°ç»„
-   X=new VecRealStru[nsize];
-   for(i=0; i<nsize;i++)
-   {
-      initMem_VecReal(&X[i]);
-      X[i].iNy=B[i].iNy;
-      allocate_VecReal(&X[i]);
-   }
- 
+    //²âÊÔĞ´AA////////////////
+    //WriteMatrixA(&A,"AA.txt");
+    //////////////////////////
+    nsize = 10000;
+    //  B = new VecRealStru[nsize];
+    printf("Begin ReadVectorB...\n");
+    //Ìí¼Ó¹¹½¨BÏòÁ¿µÄº¯Êı
+    ReadVectorB(&B,nsize,"B.txt");
+    printf("ReadVectorB finish!\n");
+    ////////////////////////
+    //printf("%22.15e\n", B[1].pdVal[1]);
+    //for (i = 0; i < nsize;i++)
+    // WriteVectorB(&B[i], nsize, "BB.txt");
 
-   ////////////////////////////////
+    //   WriteVectorX(B, nsize, "X.txt");
+    //³õÊ¼»¯XÊı×é
+    X=new VecRealStru[nsize];
+    for(i=0; i<nsize;i++)
+    {
+        initMem_VecReal(&X[i]);
+        X[i].iNy=B[i].iNy;
+        allocate_VecReal(&X[i]);
+    }
 
-   printf("The Program is Running...\n");
-   // è·å–ä»¿çœŸå¼€å§‹æ—¶é—´
-	timeStart = clock();
-   for(j=0;j<1000;j++)
-   {
-	
-   	LU_SymbolicSymG(&A,&U);
-   	LU_NumbericSymG(&A,&U);
-	
-  	 for(i=0; i<nsize; i++)
-   	{
-     	 LE_FBackwardSym(&U,B[i].pdVal,X[i].pdVal);
-   	}
-  }
-   // è·å–ä»¿çœŸç»“æŸæ—¶é—´
-	timeEnd = clock();
-	// ä»¿çœŸè¿‡ç¨‹èŠ±è´¹æ—¶é—´
-	delapseTime = (double)(timeEnd - timeStart)/CLOCKS_PER_SEC;
-	printf("The program elapsed %13.8f s\n",delapseTime);
 
-   //æ·»åŠ æ‰“å°ç»“æœç›¸é‡çš„ä»£ç 
-   printf("Begin Print Result...\n");
-   WriteVectorX(X,nsize,"X1.txt");
-   printf("Print Result finish!\n");
-   ////////////////////////
-    //åˆå§‹åŒ–Xæ•°ç»„
-   Reference=new VecRealStru[nsize];
-   for(i=0; i<nsize;i++)
-   {
-      initMem_VecReal(&Reference[i]);
-      Reference[i].iNy=B[i].iNy;
-      allocate_VecReal(&Reference[i]);
-   }
-	
-   CompareVectorX(Reference,nsize,X);
-   deallocate_MatReal(&A);
-   deallocate_UMatReal(&U);
-   for(i=0; i<nsize; i++)
-   {
-      deallocate_VecReal(&B[i]);
-      deallocate_VecReal(&X[i]);
-   }
-   delete[] X;
-   delete[] B;
-   delete[] Reference;
-   //getchar();
-	return 0;
+    ////////////////////////////////
+
+    printf("The Program is Running...\n");
+    // »ñÈ¡·ÂÕæ¿ªÊ¼Ê±¼ä
+    //	timeStart = clock();//modify by wsh 2017.7.31
+    timeStart=rdtsc();
+
+    LU_SymbolicSymG(&A,&U);
+    LU_NumbericSymG(&A,&U);
+
+    for(i=0; i<nsize; i++)
+    {
+        for(j=0;j<1000;j++)
+        {
+            LE_FBackwardSym(&U,B[i].pdVal,X[i].pdVal);
+        }
+    }
+
+    // »ñÈ¡·ÂÕæ½áÊøÊ±¼ä
+    //	timeEnd = clock();  //modify by wsh 2017.7.31
+    timeEnd=rdtsc();
+    // ·ÂÕæ¹ı³Ì»¨·ÑÊ±¼ä
+    //	delapseTime = (double)(timeEnd - timeStart)/CLOCKS_PER_SEC;//modify by wsh 2017.7.31
+    delapseTime=(double)(timeEnd - timeStart)/(F*Time);
+
+    printf("The program elapsed %13.8f s\n",delapseTime);
+
+    //Ìí¼Ó´òÓ¡½á¹ûÏàÁ¿µÄ´úÂë
+    printf("Begin Print Result...\n");
+    WriteVectorX(X,nsize,"X1.txt");
+    printf("Print Result finish!\n");
+    ////////////////////////
+    //³õÊ¼»¯XÊı×é
+    Reference=new VecRealStru[nsize];
+    for(i=0; i<nsize;i++)
+    {
+        initMem_VecReal(&Reference[i]);
+        Reference[i].iNy=B[i].iNy;
+        allocate_VecReal(&Reference[i]);
+    }
+
+    CompareVectorX(Reference,nsize,X);
+    deallocate_MatReal(&A);
+    deallocate_UMatReal(&U);
+    for(i=0; i<nsize; i++)
+    {
+        deallocate_VecReal(&B[i]);
+        deallocate_VecReal(&X[i]);
+    }
+    delete[] X;
+    delete[] B;
+    delete[] Reference;
+    //getchar();
+    return 0;
 }
 
