@@ -594,28 +594,32 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU,double b[],double x[])
     double *d_u,*u_u;
     double xc;
 
-    d_u=pFU->d_u;
-    u_u=pFU->u_u;
-    rs_u=pFU->uMax.rs_u;
-    j_u=pFU->uMax.j_u;
-    iDim=pFU->uMax.iDim;
+    d_u = pFU->d_u;               // 对角元
+    u_u = pFU->u_u;               // 行向归一化
+    rs_u = pFU->uMax.rs_u;        // 每一行の行向第一个元素在u_u中的位置
+    j_u = pFU->uMax.j_u;          // 行向元素列号
+    iDim = pFU->uMax.iDim;        // 维数
 
-    for(i = 1; i <= iDim; i++)
+
+    // 解Ux=b
+    #pragma omp parallel for
+    for(i = 1; i <= iDim; i++)  // x <- b
         x[i] = b[i];
 
-    for(i = 1; i <= iDim; i++)
+    for(i = 1; i <= iDim; i++)  //
     {
         xc = x[i];
         ks = rs_u[i];
         ke = rs_u[i+1];
 
+        #pragma omp parallel for
         for(k = ks; k < ke; k ++)
         {
-            j = j_u[k];
-            x[j] -= u_u[k]*xc;
+            x[j_u[k]] -= u_u[k] * xc;
         }
     }
 
+    #pragma omp parallel for
     for(i=1; i<=iDim; i++)
         x[i] /= d_u[i];
 
@@ -625,10 +629,10 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU,double b[],double x[])
         ke = rs_u[i+1] - 1;
         xc = x[i];
 
+        #pragma omp parallel for
         for(k=ke; k>=ks; k--)
         {
-            j = j_u[k];
-            xc -= u_u[k]*x[j];
+            xc -= u_u[k]*x[j_u[k]];
         }
         x[i] = xc;
     }

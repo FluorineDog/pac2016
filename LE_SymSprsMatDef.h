@@ -21,9 +21,9 @@
 // 稀疏二维全矩阵结构
 typedef struct
 {
-    int iDim		   ; // 矩阵维数。（MAXN）
-    int iNy	       ; // 矩阵元素实际数目。（NY1、NU）
-    int iNymax     ; // 矩阵元素最大数目,iNy = iDim*(iDim+1)/2，分配维数时使用
+    int iDim       ; // 矩阵维数。（MAXN）
+    int iNy        ; // 矩阵元素实际数目。（NY1、NU）
+    int iNymax     ; // 矩阵元素最大数目,iNy = iDim*(iDim+1)/2，分配维数时使用 （husixu: 实际上是(iDim+1)*(iDim+2)/2）
     int *piJno     ; // 每个矩阵元素列号，维数iNymax+1。（JNOY1、JNOU）
     int *piIstart  ; // 每行矩阵元素在iJno中的起始位置，维数iDim+2。（IYD1、IYDU）
     int *piIdiag   ; // 对角线元素的位置。没有对角线元素时，指向Aij，j>i且最接近,维数iDim+1。（IYD1、IYDU）
@@ -34,38 +34,38 @@ typedef struct
 // 实数向量
 typedef struct
 {
-    int    iNy;		// 向量元素数目
-    double *pdVal;	// 向量元素值，维数iNy。（I0）
+    int    iNy;        // 向量元素数目
+    double *pdVal;     // 向量元素值，维数iNy。（I0）
 }VecRealStru;
 
 // 稀疏全实数矩阵
 typedef struct
 {
-    SprsMatStru Mat;	// 矩阵结构
-    double      *pdVal;	// 矩阵元素值，维数iNy
+    SprsMatStru Mat;       // 矩阵结构
+    double      *pdVal;    // 矩阵元素值，维数iNy
 }SprsMatRealStru;
 
 //U'DU分解后的U阵结构描述
 typedef struct
 {
-    int iDim;     //矩阵维数
-    int iNzs;     //上三角（不包括对角元)的非零元素个数
-    int *rs_u;    //上三角行向开始位置,iDim+2
-    int *cs_u;    //上三角列向开始位置,iDim+2
-    int *r_u;     //上三角列向元素行号,iNzs+1
-    int *j_u;     //上三角行向元素列号,iNzs+1
+    int iDim;           //矩阵维数
+    int iNzs;           //上三角（不包括对角元)的非零元素个数
+    int *rs_u;          //上三角行向开始位置,iDim+2
+    int *cs_u;          //上三角列向开始位置,iDim+2
+    int *r_u;           //上三角列向元素行号,iNzs+1
+    int *j_u;           //上三角行向元素列号,iNzs+1
 } SprsUMatStru;
 
 //LU分解后的U阵值描述
 typedef struct
 {
     SprsUMatStru uMax;  //矩阵结构
-    double *d_u;  //分解后对角元值,iDim+1维
-    double *u_u;  //上三角元素值(行向),已归一化,iNzs+1维
+    double *d_u;        //分解后对角元值,iDim+1维
+    double *u_u;        //上三角元素值(行向),已归一化,iNzs+1维
 
     //以下两个数组为LU数值分解时所需要的工作数组
-    int    *nzs;  //工作数组 iDim+1
-    double *work; //工作数组 iDim+1
+    int    *nzs;        //工作数组 iDim+1
+    double *work;       //工作数组 iDim+1
 } SprsUMatRealStru;
 
 #endif
