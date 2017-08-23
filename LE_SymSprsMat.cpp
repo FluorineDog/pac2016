@@ -139,34 +139,34 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double* __restrict__ b, double* __re
   for (int i = 1; i <= iDim; i++)
     x[i] = b[i];
 
-  // // Solve L^T x1 = x0
-  // for (int i = 1; i <= iDim; i++) {
-  //   double xc = x[i];
-  //   int kbeg = rs_u[i];
-  //   int kend = rs_u[i + 1];
+  // Solve L^T x1 = x0
+  for (int i = 1; i <= iDim; i++) {
+    double xc = x[i];
+    int kbeg = rs_u[i];
+    int kend = rs_u[i + 1];
 
-  //   for (int k = kbeg; k < kend; k++) {
-  //     int j = j_u[k];
-  //     x[j] -= u_u[k] * xc;
-  //   }
-  // }
+    for (int k = kbeg; k < kend; k++) {
+      int j = j_u[k];
+      x[j] -= u_u[k] * xc;
+    }
+  }
 
   // // Solve D x2 = x1
   for (int i = 1; i <= iDim; i++) {
     x[i] *= d_u[i]; // auto vectorized
   }
 
-  // for (int i = iDim - 1; i >= 1; i--) {
-  // int kbeg = rs_u[i];
-  // int kend = rs_u[i + 1] - 1;
-  // double xc = x[i];
-  //
-  // for (int k = kend; k >= kbeg; k--) {
-  // int j = j_u[k];
-  // xc -= u_u[k] * x[j];
-  // }
-  // x[i] = xc;
-  // }
+  for (int i = iDim - 1; i >= 1; i--) {
+  int kbeg = rs_u[i];
+  int kend = rs_u[i + 1] - 1;
+  double xc = x[i];
+  
+  for (int k = kend; k >= kbeg; k--) {
+  int j = j_u[k];
+  xc -= u_u[k] * x[j];
+  }
+  x[i] = xc;
+  }
 }
 
 // 描    述:          //内存初始化。数目、指针变量置零
