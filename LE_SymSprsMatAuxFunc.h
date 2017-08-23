@@ -58,6 +58,45 @@ void aluss(SprsUMatRealStru *pFU) {
 
 
 
+
+
+  int sumWork = 0;
+  int seqWork = 0;
+  int paraWork = 0;
+  using Tp = std::tuple<int, int, int>;
+  std::map<Tp, int> fuck;
+  for (int i = iDim; i > 0; --i) {
+    // cerr << "para: " << paraPart[i].size();
+    // cerr << "   seq:" << seqPart[i].size();
+    // cerr << endl;
+    ++fuck[std::make_tuple(seqPart[i].size() + paraPart[i].size(), seqPart[i].size(), paraPart[i].size())];
+    seqWork += seqPart[i].size();
+    paraWork += paraPart[i].size();
+  }
+
+  int sumCount = 0;
+  for(auto pp:fuck){
+    cerr << "\t\tsumCount:" << (sumCount+=pp.second);
+    cerr << "\t\tsum:" << std::get<0>(pp.first);
+    cerr << "\t\tseq:" << std::get<1>(pp.first);
+    cerr << "\t\tpara:" << std::get<2>(pp.first);
+    cerr << "\t\tcount:" << pp.second;
+    cerr << endl;
+  }
+  sumWork = seqWork + paraWork;
+
+  cerr << endl;
+  cerr << "paraBlock = " << BLOCK << endl;
+  cerr << "seqWork = " << seqWork << endl;
+  cerr << "paraWork = " << paraWork << endl;
+  cerr << "sumWork = " << sumWork << endl;
+  cerr << endl;
+
+  cout << "paraBlock = " << BLOCK << endl;
+  cout << "seqWork = " << seqWork << endl;
+  cout << "paraWork = " << paraWork << endl;
+  cout << "sumWork = " << sumWork << endl;
+  cout << endl;
 #endif
 }
 // 函 数 名:          // initMem_VecReal
