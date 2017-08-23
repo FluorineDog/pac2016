@@ -126,14 +126,20 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double* __restrict__ b, double* __re
   int *rs_u, *j_u;
   double *d_u, *u_u;
 
+
+  // factorized A = L*D*L^T
+  // solving         A x = b 
+  // i.e.      L*D*L^T x = b
   d_u = pFU->d_u;
   u_u = pFU->u_u;
   rs_u = pFU->uMax.rs_u;
   j_u = pFU->uMax.j_u;
   iDim = pFU->uMax.iDim;
+  // let x0 = b
   for (int i = 1; i <= iDim; i++)
     x[i] = b[i];
 
+  // // Solve L^T x1 = x0
   // for (int i = 1; i <= iDim; i++) {
   //   double xc = x[i];
   //   int kbeg = rs_u[i];
@@ -144,6 +150,8 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double* __restrict__ b, double* __re
   //     x[j] -= u_u[k] * xc;
   //   }
   // }
+
+  // // Solve D x2 = x1
   for (int i = 1; i <= iDim; i++) {
     x[i] *= d_u[i]; // auto vectorized
   }
