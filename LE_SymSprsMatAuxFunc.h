@@ -19,6 +19,47 @@ void initMem_MatReal(SprsMatRealStru *A) {
   A->Mat.piLinkp = NULL;
 }
 
+void aluss(SprsUMatRealStru *pFU) {
+#ifdef TRASH_CODE
+  constexpr int BLOCK = 36;
+  int *rs_u = pFU->uMax.rs_u;
+  int *j_u = pFU->uMax.j_u;
+  int iDim = pFU->uMax.iDim;
+  int barrier = 1;
+  std::map<int, int> countTable;
+  for (int i = 1; i <= iDim; ++i) {
+    int kbeg = rs_u[i];
+    int kend = rs_u[i + 1];
+    if (i - barrier >= BLOCK) {
+      barrier += BLOCK;
+    }
+    cerr << i << ": ";
+    if (kbeg < kend) {
+      int j = j_u[kbeg];
+      // cerr << j - i << ": ";
+      ++countTable[j - i];
+    }
+    for (int k = kbeg; k < kend; k++) {
+      int j = j_u[k];
+      cerr << j - i << " ";
+    }
+    cerr << endl;
+  }
+  int sum100 = 0;
+  constexpr int barrier2 = 33;
+  for (auto p : countTable) {
+    if (p.first < barrier2) {
+      cerr << p.first << ":: " << p.second << endl;
+    } else {
+      ++sum100;
+    }
+  }
+  cerr << barrier2 << "+:: " << sum100 << endl;
+
+
+
+#endif
+}
 // 函 数 名:          // initMem_VecReal
 // 描    述:          // 稀疏实数向量内存初始化。数目、指针变量置零
 // 输入参数:          // 输入参数说明，包括每个参数的作
