@@ -20,12 +20,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tbb/tbb.h>
 using std::cout;
 using std::cerr;
 using std::endl;
 #include "LE_SymSprsMatAuxFunc.h"
-
-
 
 // 描    述:          // 稀疏实数对称矩阵分配维数
 // 输入参数:          // SprsMatRealStru *pA：稀疏实数对阵矩阵或上三角矩阵
@@ -80,60 +79,86 @@ void deallocate_VecReal(VecRealStru *V) {
   // 指针变量内存释放
   free(V->pdVal);
 }
-
-void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU){
-     
+#include <map>
+void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
+  if (false) {
+    constexpr int BLOCK = 36;
+    int *rs_u = pFU->uMax.rs_u;
+    int *j_u = pFU->uMax.j_u;
+    int iDim = pFU->uMax.iDim;
+    int barrier = 1;
+    std::map<int, int> countTable;
+    for (int i = 1; i <= iDim; ++i) {
+      int kbeg = rs_u[i];
+      int kend = rs_u[i + 1];
+      if (i - barrier >= BLOCK) {
+        barrier += BLOCK;
+      }
+      cerr << i << ": ";
+      if (kbeg < kend) {
+        int j = j_u[kbeg];
+        // cerr << j - i << ": ";
+        ++countTable[j - i];
+      }
+      for (int k = kbeg; k < kend; k++) {
+        int j = j_u[k];
+        cerr << j - i << " ";
+      }
+      cerr << endl;
+    }
+    int sum100 = 0;
+    constexpr int barrier2 = 33;
+    for (auto p : countTable) {
+      if (p.first < barrier2) {
+        cerr << p.first << ":: " << p.second << endl;
+      } else {
+        ++sum100;
+      }
+    }
+    cerr << barrier2 << "+:: " << sum100 << endl;
+  }
 }
-void AdditionLU_NumericSymG(SprsUMatRealStru *pFU){
-
-}
+void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {}
 // 输入参数:          // U阵结构及U阵值，右端项b
 // 输出参数:          // 右端项x，维数为pU的维数（解向量）
-void LE_FBackwardSym(SprsUMatRealStru *pFU, double b[], double x[]) {
-  // int kbeg, kend;
+void LE_FBackwardSym(SprsUMatRealStru *pFU, double* __restrict__ b, double* __restrict__ x){
   int iDim;
   int *rs_u, *j_u;
   double *d_u, *u_u;
-  // double xc;
 
   d_u = pFU->d_u;
   u_u = pFU->u_u;
   rs_u = pFU->uMax.rs_u;
   j_u = pFU->uMax.j_u;
   iDim = pFU->uMax.iDim;
-
   for (int i = 1; i <= iDim; i++)
     x[i] = b[i];
 
+  // for (int i = 1; i <= iDim; i++) {
+  //   double xc = x[i];
+  //   int kbeg = rs_u[i];
+  //   int kend = rs_u[i + 1];
+
+  //   for (int k = kbeg; k < kend; k++) {
+  //     int j = j_u[k];
+  //     x[j] -= u_u[k] * xc;
+  //   }
+  // }
   for (int i = 1; i <= iDim; i++) {
-    double xc = x[i];
-    int kbeg = rs_u[i];
-    int kend = rs_u[i + 1];
-
-    for (int k = kbeg; k < kend; k++) {
-      int j = j_u[k];
-      x[j] -= u_u[k] * xc;     
-    }
-  }
-
-#pragma omp parallel for
-#pragma vector always
-#pragma ivdep
-  for (int i = 1; i <= iDim; i++){
     x[i] *= d_u[i]; // auto vectorized
   }
 
-  for (int i = iDim - 1; i >= 1; i--) {
-    int kbeg = rs_u[i];
-    int kend = rs_u[i + 1] - 1;
-    double xc = x[i];
-
-    for (int k = kend; k >= kbeg; k--) {
-      int j = j_u[k];
-      xc -= u_u[k] * x[j];
-    }
-    x[i] = xc;
-  }
+  // for (int i = iDim - 1; i >= 1; i--) {
+  // int kbeg = rs_u[i];
+  // int kend = rs_u[i + 1] - 1;
+  // double xc = x[i];
+  //
+  // for (int k = kend; k >= kbeg; k--) {
+  // int j = j_u[k];
+  // xc -= u_u[k] * x[j];
+  // }
+  // x[i] = xc;
+  // }
 }
 
 // 描    述:          //内存初始化。数目、指针变量置零
