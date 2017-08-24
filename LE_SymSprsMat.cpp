@@ -14,13 +14,15 @@
 //    修改内容:
 // 2. ...
 //////////////////////////////////////////////////////////////////////
+#include <atomic>
+#include <condition_variable>
 #include <iostream>
 #include <math.h>
 #include <memory>
+#include <mutex>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <tbb/tbb.h>
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -33,7 +35,6 @@ using std::endl;
 void allocate_MatReal(SprsMatRealStru *A) {
   int dimension = 0;
   int n = 0;
-  MKL_INT opt = MKL_DSS_DEFAULTS;
 
   dimension = A->Mat.iDim + 1;
   A->Mat.iNymax = dimension * (dimension + 1) / 2; // 矩阵元素最大数目
@@ -54,7 +55,6 @@ void allocate_MatReal(SprsMatRealStru *A) {
 void allocate_VecReal(VecRealStru *V) {
   int m = 0;
   m = V->iNy + 1;
-  MKL_INT opt = MKL_DSS_DEFAULTS;
 
   V->pdVal = (double *)calloc(m, sizeof(double));
 }
@@ -69,7 +69,6 @@ void deallocate_MatReal(SprsMatRealStru *A) {
   free(A->Mat.piLinkp);
 }
 
-// 函 数 名:          // deallocate_VecReal
 // 描    述:          // 指针变量内存释放
 // 被deallocateNet()调用
 // 输入参数:          // VecRealStru *V：
@@ -78,12 +77,12 @@ void deallocate_VecReal(VecRealStru *V) {
   free(V->pdVal);
 }
 
-#include <map>
-
 #include <cassert>
+#include <map>
 #include <set>
 #include <vector>
 constexpr int BLOCK = 128;
+using su_t = SprsUMatRealStru;
 void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
   int *rs_u = pFU->uMax.rs_u;
   int *j_u = pFU->uMax.j_u;
@@ -115,79 +114,159 @@ void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
     }
   }
 }
+static void dog_init_task(su_t *U);
+void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) { dog_init_task(pFU); }
 
-void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {}
-struct ThreadArgs {
-  int id;
-  double *B;
-};
+// // CPFSO
+// class Barrier {
+// private:
+//   std::mutex _mutex;
+//   std::condition_variable _cv;
+//   std::size_t _count;
+
+// public:
+//   explicit Barrier(std::size_t count) : _count{count} {}
+//   void Wait() {
+//     std::unique_lock<std::mutex> lock{_mutex};
+//     if (--_count == 0) {
+//       _cv.notify_all();
+//     } else {
+//       _cv.wait(lock, [this] { return _count == 0; });
+//     }
+//   }
+// };
+
+using std::mutex;
+using std::atomic;
+using std::unique_lock;
+using std::lock_guard;
+
+static std::vector<std::thread> threads;
+static std::condition_variable global_cv;
+static std::mutex barrier_mutex;
+static std::atomic<int> glo_id;
+static std::atomic<int> glo_id2;
+static double *glo_b;
+static double *glo_x;
+static std::atomic<bool> die(false);
+static std::atomic<int> readiness(0);
+static std::atomic<int> done(0);
 
 constexpr int THREAD_NUM = 4;
-void *testing(void *arg_) {
-  ThreadArgs *arg = (ThreadArgs* )arg_;
-  double *b = arg->B;
-  int id = arg->id;
-  b[id] += id;
-  pthread_exit(NULL);
+static void workload(su_t *U, int private_id) {
+  // double *d_u = U->d_u;
+  // double *u_u = U->u_u;
+  // int *rs_u = U->uMax.rs_u;
+  // int *j_u = U->uMax.j_u;
+  int iDim = U->uMax.iDim;
+  while (true) {
+    {
+      unique_lock<mutex> ulk(barrier_mutex);
+      global_cv.wait(ulk, [=]() -> bool { return readiness; });
+      --readiness;
+    }
+    if (die.load(std::memory_order_acquire)) {
+      return;
+    }
+    int row = glo_id.fetch_sub(1);
+    while(row > 0){
+      glo_b[row] += row;
+      row = glo_id.fetch_sub(1);
+    }
+    ++done;
+    while (done == THREAD_NUM) {}
+    
+    row = glo_id2.fetch_sub(1);
+    while(row > 0){
+      glo_b[row]++;
+      row = glo_id2.fetch_sub(1);
+    }
+    ++done;
+    while (done == 2*THREAD_NUM) {}
+ 
+  }
+}
+
+static void dog_init_task(su_t *U) {
+  for (int i = 0; i < THREAD_NUM; ++i) {
+    auto th = std::thread(workload, U, i);
+    threads.push_back(std::move(th));
+    cerr << "work" << i << endl;
+  }
+}
+
+static void finalize_task(su_t *U) {
+  {
+    lock_guard<mutex> lck(barrier_mutex);
+    readiness = THREAD_NUM;
+    die.store(true, std::memory_order_release);
+  }
+  global_cv.notify_all();
+  for (auto &th : threads) {
+    th.join();
+  }
 }
 
 // 输入参数:          // U阵结构及U阵值，右端项b
 // 输出参数:          // 右端项x，维数为pU的维数（解向量）j
 void LE_FBackwardSym(SprsUMatRealStru *pFU, double *__restrict__ b,
                      double *__restrict__ x) {
-  int iDim;
-  int *rs_u, *j_u;
-  double *d_u, *u_u;
-  pthread_t th[THREAD_NUM];
-  ThreadArgs arg;
-  arg.B = b;
-  for (int i = 0; i < THREAD_NUM; ++i) {
-    arg.id = i;
-    pthread_create(th + i, NULL, testing, &arg);
+
+  // factorized A = L*D*L^T
+  // solving         A x = b
+  // i.e.      L*D*L^T x = b
+  double *d_u = pFU->d_u;
+  double *u_u = pFU->u_u;
+  int *rs_u = pFU->uMax.rs_u;
+  int *j_u = pFU->uMax.j_u;
+  int iDim = pFU->uMax.iDim;
+  {
+    lock_guard<mutex> lck(barrier_mutex);
+    glo_b = b;
+    glo_x = b;
+    glo_id.store(iDim);
+    glo_id2.store(iDim);
+    die.store(false, std::memory_order_release);
+    done.store(0);
+    readiness.store(THREAD_NUM, std::memory_order_release);
+  }
+  global_cv.notify_all();
+  while(done == 2*THREAD_NUM);
+  // let x0 = b
+  for (int i = 1; i <= iDim; i++) {
+    x[i] = b[i] - 1 - i;
   }
 
-  // // factorized A = L*D*L^T
-  // // solving         A x = b
-  // // i.e.      L*D*L^T x = b
-  // d_u = pFU->d_u;
-  // u_u = pFU->u_u;
-  // rs_u = pFU->uMax.rs_u;
-  // j_u = pFU->uMax.j_u;
-  // iDim = pFU->uMax.iDim;
-  // // let x0 = b
-  // for (int i = 1; i <= iDim; i++)
-  //   x[i] = b[i];
+  // Solve L^T x1 = x0
+  for (int i = 1; i <= iDim; i++) {
+    double xc = x[i];
+    int kbeg = rs_u[i];
+    int kend = rs_u[i + 1];
 
-  // // Solve L^T x1 = x0
-  // // for (int i = 1; i <= iDim; i++) {
-  //   // double xc = x[i];
-  //   // int kbeg = rs_u[i];
-  //   // int kend = rs_u[i + 1];
+    for (int k = kbeg; k < kend; k++) {
+      int j = j_u[k];
+      x[j] -= u_u[k] * xc;
+    }
+  }
 
-  //   // for (int k = kbeg; k < kend; k++) {
-  //     // int j = j_u[k];
-  //     // x[j] -= u_u[k] * xc;
-  //   // }
-  // // }
+  // Solve D x2 = x1
+  for (int i = 1; i <= iDim; i++) {
+    x[i] *= d_u[i];  // auto vectorized
+  }
 
-  // // Solve D x2 = x1
-  // for (int i = 1; i <= iDim; i++) {
-  //   x[i] *= d_u[i]; // auto vectorized
-  // }
+  // Solve L x3 = x2
+  // x = x3
+  for (int i = iDim - 1; i >= 1; i--) {
+    int kbeg = rs_u[i];
+    int kend = rs_u[i + 1] - 1;
+    double xc = x[i];
 
-  // // Solve L x3 = x2
-  // // x = x3
-  // for (int i = iDim - 1; i >= 1; i--) {
-  //   int kbeg = rs_u[i];
-  //   int kend = rs_u[i + 1] - 1;
-  //   double xc = x[i];
-
-  //   for (int k = kend; k >= kbeg; k--) {
-  //     int j = j_u[k];
-  //     xc -= u_u[k] * x[j];
-  //   }
-  //   x[i] = xc;
-  // }
+    for (int k = kend; k >= kbeg; k--) {
+      int j = j_u[k];
+      xc -= u_u[k] * x[j];
+    }
+    x[i] = xc;
+  }
 }
 
 // 描    述:          //内存初始化。数目、指针变量置零
@@ -217,4 +296,5 @@ void deallocate_UMatReal(SprsUMatRealStru *U) {
   free(U->uMax.r_u);
   free(U->uMax.j_u);
   initMem_UMatReal(U);
+  finalize_task(U);
 }
