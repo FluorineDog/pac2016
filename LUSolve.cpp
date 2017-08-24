@@ -77,12 +77,11 @@ int main(int argc, const char *argv[]) {
     LU_NumbericSymG(&A, &U);
     // cerr << "h";
     for (i = 0; i < nsize; i++) {
-      for (j = 0; j < 10; j++) {
+      for (j = 0; j < 1; j++) {
         // cerr << "fuck";
         LE_FBackwardSym(&U, B[i].pdVal, X[i].pdVal);
       }
     }
-
     // 获取仿真结束时间
   }
   timeEnd = rdtsc();

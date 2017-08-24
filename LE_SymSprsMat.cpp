@@ -99,7 +99,7 @@ void deallocate_VecReal(VecRealStru *V) {
 #include <map>
 #include <set>
 #include <vector>
-constexpr int BLOCK = 128;
+constexpr int BLOCK = 1;
 using su_t = SprsUMatRealStru;
 void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
   int *rs_u = pFU->uMax.rs_u;
@@ -114,6 +114,7 @@ void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
     int kend = rs_u[i + 1];
     refTable[i].insert(j_u + kbeg, j_u + kend);
   }
+  // cerr <<"fuck"<< refTable[iDim -1].size() << "ed" << endl;
   std::vector<std::set<int>> seqPart(iDim + 1);
   std::vector<std::vector<int>> paraPart(iDim + 1);
   for (int basei = iDim; basei > 0; basei -= BLOCK) {
@@ -151,7 +152,7 @@ void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
   for (int i = iDim; i > 0; --i) {
     col_index = (col_index + 7) / 8;
     pFU->dogUMat.paraRanges[i].beg = col_index;
-    for (auto x : seqPart[i]) {
+    for (auto x : paraPart[i]) {
       pFU->dogUMat.columns[col_index++] = x;
     }
     pFU->dogUMat.paraRanges[i].end = col_index;
@@ -177,7 +178,7 @@ void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {
   auto seqRange = pFU->dogUMat.SeqRanges;
   auto columns = pFU->dogUMat.columns;
   auto values = pFU->values;
-  cerr << values;
+  // cerr << values;
   memset(values, 0, pFU->dogUMat.alloc_size);
   auto iDim = pFU->dogUMat.iDim;
   for (int basei = iDim; basei > 0; basei -= BLOCK) {
@@ -207,7 +208,7 @@ void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {
           int cur_j = pair.first;
           int cur_col_id = pair.second;
           // god bless me !!!!
-          values[mapping[i][cur_j]] += coef*values[cur_col_id];
+          values[mapping[i][cur_j]] += coef * values[cur_col_id];
         }
       }
     }
@@ -231,7 +232,7 @@ static std::atomic<bool> die(false);
 static std::atomic<int> readiness(0);
 static std::atomic<int> done(0);
 
-constexpr int THREAD_NUM = 4;
+constexpr int THREAD_NUM = 2;
 static void workload(su_t *U, int private_id) {
   // double *d_u = U->d_u;
   // double *u_u = U->u_u;
@@ -241,10 +242,10 @@ static void workload(su_t *U, int private_id) {
   while (true) {
     {
       unique_lock<mutex> ulk(barrier_mutex);
-      global_cv.wait(ulk, [=]() -> bool { return readiness; });
+      global_cv.wait(ulk, [=]() -> bool { return readiness || die; });
       --readiness;
     }
-    if (die.load(std::memory_order_acquire)) {
+    if (die) {
       return;
     }
     int row = glo_id.fetch_sub(1);
@@ -254,8 +255,8 @@ static void workload(su_t *U, int private_id) {
     }
     ++done;
     while (done == THREAD_NUM) {
-    }
 
+    }
     row = glo_id2.fetch_sub(1);
     while (row > 0) {
       glo_b[row]++;
@@ -271,19 +272,22 @@ static void dog_init_task(su_t *U) {
   for (int i = 0; i < THREAD_NUM; ++i) {
     auto th = std::thread(workload, U, i);
     threads.push_back(std::move(th));
-    cerr << "work" << i << endl;
+    // cerr << "work" << i << endl;
   }
 }
 
 static void finalize_task(su_t *U) {
   {
     lock_guard<mutex> lck(barrier_mutex);
-    readiness = THREAD_NUM;
-    die.store(true, std::memory_order_release);
+    die.store(true);
+    // readiness = THREAD_NUM;
   }
+  cerr << "recy" << endl;
   global_cv.notify_all();
   for (auto &th : threads) {
+    cerr << "recyclcing" << endl;
     th.join();
+    cerr << "recyclced" << endl;
   }
 }
 
@@ -310,9 +314,8 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double *__restrict__ b,
     glo_x = b;
     glo_id.store(iDim);
     glo_id2.store(iDim);
-    die.store(false, std::memory_order_release);
     done.store(0);
-    readiness.store(THREAD_NUM, std::memory_order_release);
+    readiness.store(THREAD_NUM);
   }
   global_cv.notify_all();
 
@@ -322,7 +325,7 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double *__restrict__ b,
   for (int i = 1; i <= iDim; i++) {
     x[i] = b[i] - 1 - i;
   }
-  
+
   // Solve U^T x1 = x0
   for (int i = 1; i <= iDim; i++) {
     double xc = x[i];
@@ -334,7 +337,7 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double *__restrict__ b,
       x[j] -= u_u[k] * xc;
     }
   }
-   
+
   // Solve D x2 = x1
   for (int i = 1; i <= iDim; i++) {
     x[i] *= d_u[i]; // auto vectorized
@@ -342,16 +345,54 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double *__restrict__ b,
 
   // Solve U x3 = x2
   // x = x3
-  for (int i = iDim - 1; i >= 1; i--) {
-    int kbeg = rs_u[i];
-    int kend = rs_u[i + 1] - 1;
-    double xc = x[i];
+  // for (int i = iDim - 1; i >= 1; i--) {
+  //   int kbeg = rs_u[i];
+  //   int kend = rs_u[i + 1];
+  //   double xc = x[i];
+  //   // for (int k = kend - 1; k >= kbeg; k--) {
+  //   for(int k = kbeg; k < kend; ++k) {
+  //     int j = j_u[k];
+  //     xc -= u_u[k] * x[j];
+  //   }
+  //   x[i] = xc;
+  // }
 
-    for (int k = kend; k >= kbeg; k--) {
-      int j = j_u[k];
-      xc -= u_u[k] * x[j];
-    }
-    x[i] = xc;
+  double tempx[BLOCK+1];
+  for (int basei = iDim; basei > 0; basei -= BLOCK) {
+    int iend = std::max(basei - BLOCK, 0);
+    // para first
+    for (int i = basei; i > iend; i--) {
+      double xc = x[i];
+      int kbeg = paraRange[i].beg;
+      int kend = paraRange[i].end;
+      int _kbeg = rs_u[i];
+      int _kend = rs_u[i+1];
+      // cerr << kend -kbeg <<  "-";
+      // cerr << _kend -_kbeg << endl;
+      // assert(kend-kbeg == _kend - _kbeg); 
+      for (int k = kbeg; k < kend; ++k) {
+        int _k = _kbeg++;
+        int _j = j_u[k];
+
+        int j = columns[k];
+        // cout << _j << "*"<< j << endl;
+        xc += values[k] * x[j];
+        // assert(_j == j);
+        // assert(values[k] == d_u[k]);
+      }
+      tempx[basei-i] = xc;
+    } 
+    // seq next
+  //   for (int i = basei; i > iend; i--) {
+  //     double xc = tempx[basei-i];
+  //     int kbeg = seqRange[i].beg;
+  //     int kend = seqRange[i].end;
+  //     for (int k = kbeg; k < kend; ++k) {
+  //       int j = columns[k];
+  //       xc += values[k] * tempx[basei-j];
+  //     }
+  //     x[i] = xc;
+  //   }
   }
 }
 
