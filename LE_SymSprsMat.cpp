@@ -114,9 +114,11 @@ void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
     int kend = rs_u[i + 1];
     refTable[i].insert(j_u + kbeg, j_u + kend);
   }
-  // cerr <<"fuck"<< refTable[iDim -1].size() << "ed" << endl;
+  // cerr <<"fuck"<< refTable[iDim-2].size() << "ed" << endl;
+
   std::vector<std::set<int>> seqPart(iDim + 1);
   std::vector<std::vector<int>> paraPart(iDim + 1);
+
   for (int basei = iDim; basei > 0; basei -= BLOCK) {
     int iend = std::max(basei - BLOCK, 0);
     for (int i = basei; i > iend; i--) {
@@ -150,14 +152,14 @@ void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
 
   int col_index = 0;
   for (int i = iDim; i > 0; --i) {
-    col_index = (col_index + 7) / 8;
+    col_index = (col_index + 7) &~7;
     pFU->dogUMat.paraRanges[i].beg = col_index;
     for (auto x : paraPart[i]) {
       pFU->dogUMat.columns[col_index++] = x;
     }
     pFU->dogUMat.paraRanges[i].end = col_index;
 
-    col_index = (col_index + 7) / 8;
+    col_index = (col_index + 7) &~7;
     pFU->dogUMat.SeqRanges[i].beg = col_index;
     for (auto x : seqPart[i]) {
       pFU->dogUMat.columns[col_index++] = x;
@@ -272,7 +274,6 @@ static void dog_init_task(su_t *U) {
   for (int i = 0; i < THREAD_NUM; ++i) {
     auto th = std::thread(workload, U, i);
     threads.push_back(std::move(th));
-    // cerr << "work" << i << endl;
   }
 }
 
@@ -372,13 +373,16 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double *__restrict__ b,
       // assert(kend-kbeg == _kend - _kbeg); 
       for (int k = kbeg; k < kend; ++k) {
         int _k = _kbeg++;
-        int _j = j_u[k];
+        int _j = j_u[_k];
 
         int j = columns[k];
-        // cout << _j << "*"<< j << endl;
+        cerr << "k=" << k << endl;
+        cerr << "row=" << i << endl;
+        cerr << _j << "*"<< j << endl;
         xc += values[k] * x[j];
-        // assert(_j == j);
-        // assert(values[k] == d_u[k]);
+        assert(_j == j);
+        cerr << values[k] << "--" << d_u[k] << endl;
+        assert(values[k] == d_u[k]);
       }
       tempx[basei-i] = xc;
     } 
