@@ -294,7 +294,7 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double *__restrict__ b,
 
   // factorized A = L*D*L^T
   // solving         A x = b
-  // i.e.      L*D*L^T x = b
+  // i.e.      L^T*D*L x = b
   double *d_u = pFU->d_u;
   double *u_u = pFU->u_u;
   int *rs_u = pFU->uMax.rs_u;
