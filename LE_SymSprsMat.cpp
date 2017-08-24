@@ -181,26 +181,29 @@ void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {
   auto columns = pFU->dogUMat.columns;
   auto values = pFU->values;
   // cerr << values;
-  memset(values, 0, pFU->dogUMat.alloc_size);
+  memset(values, 0, pFU->dogUMat.alloc_size*sizeof(double));
+  cerr << "fuck" << values[0] << endl;
   auto iDim = pFU->dogUMat.iDim;
+  int debug_i = -1, debug_j = -1;
   for (int basei = iDim; basei > 0; basei -= BLOCK) {
     int iend = std::max(basei - BLOCK, 0);
     // (i,j) -> col_index;
     std::map<int, std::map<int, int>> mapping;
     for (int i = basei; i > iend; i--) {
-      int kbeg = rs_u[i];
-      int kend = rs_u[i + 1];
       for (int k = paraRange[i].beg; k < paraRange[i].end; ++k) {
-        int j = j_u[k];
-        mapping[i][j] = columns[k];
+        int j = columns[k];
+        mapping[i][j] = k;
       }
       for (int k = seqRange[i].beg; k < seqRange[i].end; ++k) {
-        int j = j_u[k];
-        mapping[i][j] = columns[k];
+        int j = columns[k];
+        mapping[i][j] = k;
       }
+      int kbeg = rs_u[i];
+      int kend = rs_u[i + 1];
       for (int k = kbeg; k < kend; k++) {
         int j = j_u[k];
         int col_id = mapping[i][j];
+        // cerr << i << " "<< j;
         double coef = -u_u[k];
         values[col_id] += coef;
         if (j > basei) {
@@ -346,47 +349,48 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double *__restrict__ b,
 
   // Solve U x3 = x2
   // x = x3
-  // for (int i = iDim - 1; i >= 1; i--) {
-  //   int kbeg = rs_u[i];
-  //   int kend = rs_u[i + 1];
-  //   double xc = x[i];
-  //   // for (int k = kend - 1; k >= kbeg; k--) {
-  //   for(int k = kbeg; k < kend; ++k) {
-  //     int j = j_u[k];
-  //     xc -= u_u[k] * x[j];
-  //   }
-  //   x[i] = xc;
-  // }
+  for (int i = iDim - 1; i >= 1; i--) {
+    int kbeg = rs_u[i];
+    int kend = rs_u[i + 1];
+    double xc = x[i];
+    // for (int k = kend - 1; k >= kbeg; k--) {
+    for(int k = kbeg; k < kend; ++k) {
+      int j = j_u[k];
+      xc -= u_u[k] * x[j];
+      assert(u_u[k] == u_u[k]);
+    }
+    x[i] = xc;
+  }
 
-  double tempx[BLOCK+1];
-  for (int basei = iDim; basei > 0; basei -= BLOCK) {
-    int iend = std::max(basei - BLOCK, 0);
-    // para first
-    for (int i = basei; i > iend; i--) {
-      double xc = x[i];
-      int kbeg = paraRange[i].beg;
-      int kend = paraRange[i].end;
-      int _kbeg = rs_u[i];
-      int _kend = rs_u[i+1];
-      // cerr << kend -kbeg <<  "-";
-      // cerr << _kend -_kbeg << endl;
-      // assert(kend-kbeg == _kend - _kbeg); 
-      for (int k = kbeg; k < kend; ++k) {
-        int _k = _kbeg++;
-        int _j = j_u[_k];
+  // double tempx[BLOCK+1];
+  // for (int basei = iDim; basei > 0; basei -= BLOCK) {
+  //   int iend = std::max(basei - BLOCK, 0);
+  //   // para first
+  //   for (int i = basei; i > iend; i--) {
+  //     double xc = x[i];
+  //     int kbeg = paraRange[i].beg;
+  //     int kend = paraRange[i].end;
+  //     int _kbeg = rs_u[i];
+  //     int _kend = rs_u[i+1];
+  //     // cerr << kend -kbeg <<  "-";
+  //     // cerr << _kend -_kbeg << endl;
+  //     // assert(kend-kbeg == _kend - _kbeg); 
+  //     for (int k = kbeg; k < kend; ++k) {
+  //       int _k = _kbeg++;
+  //       int _j = j_u[_k];
 
-        int j = columns[k];
-        cerr << "k=" << k << endl;
-        cerr << "row=" << i << endl;
-        cerr << _j << "*"<< j << endl;
-        xc += values[k] * x[j];
-        assert(_j == j);
-        cerr << values[k] << "--" << d_u[k] << endl;
-        assert(values[k] == d_u[k]);
-      }
-      tempx[basei-i] = xc;
-    } 
-    // seq next
+  //       int j = columns[k];
+  //       cerr << "k=" << k << endl;
+  //       cerr << "row=" << i << endl;
+  //       cerr << _j << "*"<< j << endl;
+  //       xc += values[k] * x[j];
+  //       assert(_j == j);
+  //       cerr << values[k] << "--" << u_u[_k] << endl;
+  //       assert(values[k] == u_u[_k]);
+  //     }
+  //     tempx[basei-i] = xc;
+  //   } 
+  //   // seq next
   //   for (int i = basei; i > iend; i--) {
   //     double xc = tempx[basei-i];
   //     int kbeg = seqRange[i].beg;
@@ -397,7 +401,7 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double *__restrict__ b,
   //     }
   //     x[i] = xc;
   //   }
-  }
+  // }
 }
 
 // 描    述:          //内存初始化。数目、指针变量置零
