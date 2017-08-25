@@ -24,7 +24,7 @@
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) < (y) ? (y) : (x))
 
-double **UT_mu, **U_mu, **UT_su, **U_su;
+double **UT_mu, **U_mu, **UT_su, **U_su, **UT_su_t, **U_su_t;
 int **UT_min, **U_min, **UT_sin, **U_sin;
 int block_size;
 
@@ -583,13 +583,13 @@ void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
         d_u[i] = dk;
     }
 
-    /// additions by husixu
+    ///------------------------------- additions by husixu
 
     // 1. remove the zeros
     //printf("%d\n", pFU->uMax.iNzs);
-    j = 1;                          // the new array counter
+    j = 0;                          // the new array counter
     p = rs_u[1];                    // init rs_u[n+1]
-    rs_u[1] = 1;
+    rs_u[1] = 0;
     for(i = 1; i <= iDim; ++i) {
         m = p;
         n = rs_u[i + 1];                      // n <- p (last rs_u[n+1])
@@ -609,8 +609,10 @@ void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
     U_mu   = (double **)calloc(iDim + 1, sizeof(double *));
     U_min = (int **)calloc(iDim + 1, sizeof(int *));
     UT_su  = (double **)calloc(iDim + 1, sizeof(double *));
+    UT_su_t  = (double **)calloc(iDim + 1, sizeof(double *));
     UT_sin  = (int **)calloc(iDim + 1, sizeof(int *));
     U_su   = (double **)calloc(iDim + 1, sizeof(double *));
+    U_su_t   = (double **)calloc(iDim + 1, sizeof(double *));
     U_sin = (int **)calloc(iDim + 1, sizeof(int *));
     for(int i = 1; i < iDim; ++i){
 
@@ -621,6 +623,7 @@ void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
         memset(UT_mu[i], 0, (iDim + 1) * sizeof(double));
         UT_min[i] = (int *)calloc(iDim + 1, sizeof(int));
         memset(UT_min[i], 0, (iDim + 1) * sizeof(int));
+
         U_mu[i] = (double *)calloc(iDim + 1, sizeof(double));
         memset(U_mu[i], 0, (iDim + 1) * sizeof(double));
         U_min[i] = (int *)calloc(iDim + 1, sizeof(int));
@@ -628,16 +631,21 @@ void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
 
         UT_su[i] = (double *)calloc(iDim + 1, sizeof(double));
         memset(UT_su[i], 0, (iDim + 1) * sizeof(double));
+        UT_su_t[i] = (double *)calloc(iDim + 1, sizeof(double));
+        memset(UT_su_t[i], 0, (iDim + 1) * sizeof(double));
         UT_sin[i] = (int *)calloc(iDim + 1, sizeof(int));
         memset(UT_sin[i], 0, (iDim + 1) * sizeof(int));
+
         U_su[i] = (double *)calloc(iDim + 1, sizeof(double));
         memset(U_su[i], 0, (iDim + 1) * sizeof(double));
+        U_su_t[i] = (double *)calloc(iDim + 1, sizeof(double));
+        memset(U_su_t[i], 0, (iDim + 1) * sizeof(double));
         U_sin[i] = (int *)calloc(iDim + 1, sizeof(int));
         memset(U_sin[i], 0, (iDim + 1) * sizeof(int));
     }
 
     // 2. do elementary row operation in U^T
-    block_size = 2;
+    block_size = 123;
 
     // get U^-1 directly, not percise enough
     //for(i = 1; i <= iDim; i++) {
@@ -664,14 +672,26 @@ void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
                 UT_mu[j_u[k]][j] -= (u_u[k] * UT_mu[i][j]);
             UT_mu[j_u[k]][i] = -u_u[k];
 
-            for(j = 1; j < blockStart; ++j){
-                if(UT_su[i][j] != 0)
-                    UT_su[j_u[k]][j] -= (u_u[k] * UT_su[i][j]);
-            }
+            //for(j = 1; j < blockStart; ++j){
+            //    if(UT_su[i][j] != 0)
+            //        UT_su[j_u[k]][j] -= (u_u[k] * UT_su[i][j]);
+            //}
         }
         for(; k < kp; ++k){
             UT_su[j_u[k]][i] = u_u[k];
+            UT_su_t[j_u[k]][i] = u_u[k];
         }
+    }
+    for(i = 1; i <= iDim; i += block_size){
+        blockStart = block_size * ((i-1) / block_size) + 1;
+        blockEnd = min(block_size * ((i-1) / block_size + 1) + 1, iDim + 1);
+
+        // partition, k is line num
+        for(k = i; k < blockEnd; ++k)
+            for(m = blockStart; m < blockEnd; ++m)
+                if(UT_mu[k][m] != 0.0)
+                    for(j=1; j < blockStart; ++j)
+                        UT_su[k][j] += UT_mu[k][m] * UT_su_t[m][j];
     }
 
     //// <!-- debug -->
@@ -772,10 +792,10 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU,double b[],double x[])
 
     // ->> modified
     int blockEnd;
-    #pragma omp parallel for private(i, j) shared(x, b, UT_mu, UT_min)
+    //#pragma omp parallel for private(i, j) shared(x, b, UT_mu, UT_min)
     for(i = 1; i <= iDim; ++i){
         for(j = 1; UT_min[i][j] != 0; ++j)
-            x[i] += UT_mu[i][j] * b[UT_min[i][j]];
+            x[i] += b[UT_min[i][j]] * UT_mu[i][j];
     }
 
     for(i = 1; i <= iDim; i += block_size){
@@ -785,7 +805,7 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU,double b[],double x[])
         //#pragma omp parallel for private(k, j) shared(blockEnd, i, x, UT_sin, UT_su)
         for(k = i; k < blockEnd; ++k){
             for(j = 1; UT_sin[k][j] != 0; ++j)
-                x[k] -= UT_su[k][j] * x[UT_sin[k][j]];
+                x[k] -= x[UT_sin[k][j]] * UT_su[k][j] ;
         }
     }
 
