@@ -351,11 +351,12 @@ int CompareVectorX(VecRealStru *X, int &nsize, VecRealStru *result) {
     return -1;
   }
    
-  
+  int first =  -1; 
   for (i = 0; i < 1; i++) {
     for (j = 0; j < X[i].iNy + 1; j++) {
       if ((X[i].pdVal[j] - result[i].pdVal[j] > 1e-9) ||
           (result[i].pdVal[j] - X[i].pdVal[j] > 1e-9)) {
+        if()
         fprintf(fp, "matrix dimensions=%dColumn number matrix =%d,reference "
                     "results=%22.15e,running result:%22.15e\n",
                 i, j, X[i].pdVal[j], result[i].pdVal[j]);

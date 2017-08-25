@@ -8,6 +8,8 @@
 //
 #include "LE_SymSprsMatDef.h"
 #include "LE_SymSprsMatFunc.h"
+#include <cassert>
+#include <cmath>
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -389,6 +391,7 @@ int CompareVectorX(VecRealStru *X, int &nsize, VecRealStru *result) {
   int tmp = 2 * nsize;
   for (i = 0; i < nsize; i++) {
     for (j = 0; j < X[i].iNy + 1; j++) {
+      assert(!std::isnan(result[i].pdVal[j]));
       if ((X[i].pdVal[j] - result[i].pdVal[j] > 1e-9) ||
           (result[i].pdVal[j] - X[i].pdVal[j] > 1e-9)) {
         if (i > tmp) {

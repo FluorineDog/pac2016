@@ -38,6 +38,7 @@ void deallocate_VecReal(VecRealStru *V) {
 #include <map>
 #include <set>
 #include <vector>
+
 constexpr int BLOCK = 1;
 using su_t = SprsUMatRealStru;
 void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
@@ -83,6 +84,7 @@ void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
   free(pFU->dogUMat.columns);
   free(pFU->dogUMat.SeqRanges);
   free(pFU->dogUMat.paraRanges);
+  free(pFU->values);
 
   pFU->dogUMat.SeqRanges = dog_calloc(iDim + 1, pair_ii_t);
   pFU->dogUMat.paraRanges = dog_calloc(iDim + 1, pair_ii_t);
@@ -105,6 +107,21 @@ void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
     }
     pFU->dogUMat.SeqRanges[i].end = col_index;
   }
+  for (int i = 1; i < iDim + 1; ++i) {
+    cerr << i << "=";
+    auto range = pFU->dogUMat.SeqRanges[i];
+    for (int k = range.beg; k < range.end; ++k) {
+      int j = pFU->dogUMat.columns[k];
+      cerr << j << " ";
+    }
+    cerr << "| ";
+    range = pFU->dogUMat.paraRanges[i];
+    for (int k = range.beg; k < range.end; ++k) {
+      int j = pFU->dogUMat.columns[k];
+      cerr << j << " ";
+    }
+    cerr << endl;
+  }
 }
 
 static void dog_init_task(su_t *U);
@@ -115,8 +132,8 @@ void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {
   int *rs_u = pFU->uMax.rs_u;
   int *j_u = pFU->uMax.j_u;
   double *u_u = pFU->u_u;
-  auto paraRange = pFU->dogUMat.paraRanges;
-  auto seqRange = pFU->dogUMat.SeqRanges;
+  auto paraRanges = pFU->dogUMat.paraRanges;
+  auto seqRanges = pFU->dogUMat.SeqRanges;
   auto columns = pFU->dogUMat.columns;
   auto values = pFU->values;
   // cerr << values;
@@ -129,11 +146,11 @@ void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {
     // (i,j) -> col_index;
     std::map<int, std::map<int, int>> mapping;
     for (int i = basei; i > iend; i--) {
-      for (int k = paraRange[i].beg; k < paraRange[i].end; ++k) {
+      for (int k = paraRanges[i].beg; k < paraRanges[i].end; ++k) {
         int j = columns[k];
         mapping[i][j] = k;
       }
-      for (int k = seqRange[i].beg; k < seqRange[i].end; ++k) {
+      for (int k = seqRanges[i].beg; k < seqRanges[i].end; ++k) {
         int j = columns[k];
         mapping[i][j] = k;
       }
@@ -173,26 +190,26 @@ public:
     }
   };
   void Wait(int id) {
-    lock[0][id ^ 0x1] = 0;
-    lock[1][id ^ 0x2] = 0;
-    lock[2][id ^ 0x4] = 0;
-    lock[3][id ^ 0x8] = 0;
-    lock[4][id ^ 0x10] = 0;
-    while (lock[0][id]) {
-    }
-    while (lock[1][id]) {
-    }
-    while (lock[2][id]) {
-    }
-    while (lock[3][id]) {
-    }
-    while (lock[4][id]) {
-    }
-    lock[0][id ] = 1;
-    lock[1][id ] = 1;
-    lock[2][id ] = 1;
-    lock[3][id ] = 1;
-    lock[4][id ] = 1;
+    // lock[0][id ^ 0x1] = 0;
+    // lock[1][id ^ 0x2] = 0;
+    // lock[2][id ^ 0x4] = 0;
+    // lock[3][id ^ 0x8] = 0;
+    // lock[4][id ^ 0x10] = 0;
+    // while (lock[0][id]) {
+    // }
+    // while (lock[1][id]) {
+    // }
+    // while (lock[2][id]) {
+    // }
+    // while (lock[3][id]) {
+    // }
+    // while (lock[4][id]) {
+    // }
+    // lock[0][id ] = 1;
+    // lock[1][id ] = 1;
+    // lock[2][id ] = 1;
+    // lock[3][id ] = 1;
+    // lock[4][id ] = 1;
   }
 
 protected:
@@ -230,7 +247,7 @@ protected:
   // std::atomic<unsigned int> step_;
   volatile unsigned int step_;
 };
-constexpr int THREAD_NUM = 32;
+constexpr int THREAD_NUM = 0;
 static Barrier<THREAD_NUM + 1> barrierhead[2];
 // static Barrier<THREAD_NUM> barrier[50];
 static dogBarrier barrier[2];
@@ -251,7 +268,7 @@ static void workload(su_t *U, int private_id) {
   while (true) {
     barrierhead[0].Wait();
     for (int i = 0; i < 50; ++i) {
-      barrier[i&1].Wait(private_id);
+      barrier[i & 1].Wait(private_id);
     }
     if (die) {
       return;
@@ -331,46 +348,35 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double b[], double x[]) {
   rs_u = pFU->uMax.rs_u;
   j_u = pFU->uMax.j_u;
   iDim = pFU->uMax.iDim;
-  auto paraRange = pFU->dogUMat.paraRanges;
-  auto seqRange = pFU->dogUMat.SeqRanges;
+  auto paraRanges = pFU->dogUMat.paraRanges;
+  auto seqRanges = pFU->dogUMat.SeqRanges;
   auto columns = pFU->dogUMat.columns;
   auto values = pFU->values;
   // cerr << "fuck";
 
-  barrierhead[0].Wait();
-  barrierhead[1].Wait();
-  // peer to peer
+  // barrierhead[0].Wait();
+  // barrierhead[1].Wait();
+  // // peer to peer
 
-  // {
-  //   cerr << "fuck";
-  //   unique_lock<mutex> ulk(barrier3_mutex);
-  //   ++done;
-  //   if (done == THREAD_NUM) {
-  //     global_cv.notify_all();
-  //   } else {
-  //     global_cv.wait(ulk, [&]() -> bool { return done == 1 + THREAD_NUM; });
-  //   }
-  // }
+  for (i = 1; i <= iDim; i++) {
+    // b[i] -= i + 1;
+    x[i] = b[i];
+  }
 
-  // for (i = 1; i <= iDim; i++) {
-  //   // b[i] -= i + 1;
-  //   x[i] = b[i];
-  // }
+  for (i = 1; i <= iDim; i++) {
+    xc = x[i];
+    ks = rs_u[i];
+    ke = rs_u[i + 1];
 
-  // for (i = 1; i <= iDim; i++) {
-  //   xc = x[i];
-  //   ks = rs_u[i];
-  //   ke = rs_u[i + 1];
+    for (k = ks; k < ke; k++) {
+      j = j_u[k];
+      x[j] -= u_u[k] * xc;
+      assert(u_u[k] == u_u[k]);
+    }
+  }
 
-  //   for (k = ks; k < ke; k++) {
-  //     j = j_u[k];
-  //     x[j] -= u_u[k] * xc;
-  //     assert(u_u[k] == u_u[k]);
-  //   }
-  // }
-
-  // for (i = 1; i <= iDim; i++)
-  //   x[i] /= d_u[i];
+  for (i = 1; i <= iDim; i++)
+    x[i] /= d_u[i];
 
   // for (i = iDim - 1; i >= 1; i--) {
   //   ks = rs_u[i];
@@ -383,6 +389,39 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double b[], double x[]) {
   //   }
   //   x[i] = xc;
   // }
+
+  double tempx[BLOCK + 1];
+  for (int basei = iDim; basei > 0; basei -= BLOCK) {
+    int iend = std::max(basei - BLOCK, 0);
+    // para first
+    for (int i = basei; i > iend; i--) {
+      double xc = x[i];
+      int kbeg = paraRanges[i].beg;
+      int kend = paraRanges[i].end;
+      for (int k = kbeg; k < kend; ++k) {
+        int j = columns[k];
+        // cerr << "k=" << k << endl;
+        // cerr << "row=" << i << endl;
+        // cerr << _j << "*"<< j << endl;
+        xc += values[k] * x[j];
+        // std::cerr.precision(60);
+        // cerr << values[k] - u_u[_k] << endl;
+        // cerr << u_u[_k] << "||" << values[k] << endl;
+      }
+      tempx[basei - i] = xc;
+    }
+    // seq next
+    for (int i = basei; i > iend; i--) {
+      double xc = tempx[basei - i];
+      int kbeg = seqRanges[i].beg;
+      int kend = seqRanges[i].end;
+      for (int k = kbeg; k < kend; ++k) {
+        int j = columns[k];
+        xc += values[k] * tempx[basei - j];
+      }
+      x[i] = xc;
+    }
+  }
 }
 
 // 描    述:          //内存初始化。数目、指针变量置零
