@@ -70,6 +70,7 @@ typedef struct {
   int *j_u;  //上三角行向元素列号,iNzs+1
 } SprsUMatStru;
 
+typedef double __attribute((aligned(64))) aligned_double;
 // LU分解后的U阵值描述
 typedef struct {
   SprsUMatStru uMax; //矩阵结构
@@ -82,7 +83,7 @@ typedef struct {
 
   // dog implement
   UMat_t dogUMat;
-  double *values;
+  aligned_double *values;
 } SprsUMatRealStru;
 
 #endif
