@@ -39,7 +39,7 @@ void deallocate_VecReal(VecRealStru *V) {
 #include <set>
 #include <vector>
 
-constexpr int BLOCK = 1;
+constexpr int BLOCK = 64;
 using su_t = SprsUMatRealStru;
 void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
   int *rs_u = pFU->uMax.rs_u;
@@ -54,7 +54,6 @@ void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
     int kend = rs_u[i + 1];
     refTable[i].insert(j_u + kbeg, j_u + kend);
   }
-  // cerr <<"fuck"<< refTable[iDim-2].size() << "ed" << endl;
 
   std::vector<std::set<int>> seqPart(iDim + 1);
   std::vector<std::vector<int>> paraPart(iDim + 1);
@@ -107,21 +106,6 @@ void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
     }
     pFU->dogUMat.SeqRanges[i].end = col_index;
   }
-  for (int i = 1; i < iDim + 1; ++i) {
-    cerr << i << "=";
-    auto range = pFU->dogUMat.SeqRanges[i];
-    for (int k = range.beg; k < range.end; ++k) {
-      int j = pFU->dogUMat.columns[k];
-      cerr << j << " ";
-    }
-    cerr << "| ";
-    range = pFU->dogUMat.paraRanges[i];
-    for (int k = range.beg; k < range.end; ++k) {
-      int j = pFU->dogUMat.columns[k];
-      cerr << j << " ";
-    }
-    cerr << endl;
-  }
 }
 
 static void dog_init_task(su_t *U);
@@ -136,9 +120,7 @@ void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {
   auto seqRanges = pFU->dogUMat.SeqRanges;
   auto columns = pFU->dogUMat.columns;
   auto values = pFU->values;
-  // cerr << values;
   memset(values, 0, pFU->dogUMat.alloc_size * sizeof(double));
-  // cerr << "fuck" << values[0] << endl;
   auto iDim = pFU->dogUMat.iDim;
   int debug_i = -1, debug_j = -1;
   for (int basei = iDim; basei > 0; basei -= BLOCK) {
@@ -146,20 +128,22 @@ void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {
     // (i,j) -> col_index;
     std::map<int, std::map<int, int>> mapping;
     for (int i = basei; i > iend; i--) {
+
       for (int k = paraRanges[i].beg; k < paraRanges[i].end; ++k) {
         int j = columns[k];
         mapping[i][j] = k;
       }
+
       for (int k = seqRanges[i].beg; k < seqRanges[i].end; ++k) {
         int j = columns[k];
         mapping[i][j] = k;
       }
+
       int kbeg = rs_u[i];
       int kend = rs_u[i + 1];
       for (int k = kbeg; k < kend; k++) {
         int j = j_u[k];
         int col_id = mapping[i][j];
-        // cerr << i << " "<< j;
         double coef = -u_u[k];
         values[col_id] += coef;
         if (j > basei) {
@@ -167,6 +151,9 @@ void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {
         }
         for (auto pair : mapping[j]) {
           int cur_j = pair.first;
+          if(cur_j > basei){
+            break;
+          }
           int cur_col_id = pair.second;
           // god bless me !!!!
           values[mapping[i][cur_j]] += coef * values[cur_col_id];
@@ -190,26 +177,7 @@ public:
     }
   };
   void Wait(int id) {
-    // lock[0][id ^ 0x1] = 0;
-    // lock[1][id ^ 0x2] = 0;
-    // lock[2][id ^ 0x4] = 0;
-    // lock[3][id ^ 0x8] = 0;
-    // lock[4][id ^ 0x10] = 0;
-    // while (lock[0][id]) {
-    // }
-    // while (lock[1][id]) {
-    // }
-    // while (lock[2][id]) {
-    // }
-    // while (lock[3][id]) {
-    // }
-    // while (lock[4][id]) {
-    // }
-    // lock[0][id ] = 1;
-    // lock[1][id ] = 1;
-    // lock[2][id ] = 1;
-    // lock[3][id ] = 1;
-    // lock[4][id ] = 1;
+
   }
 
 protected:
@@ -393,24 +361,19 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double b[], double x[]) {
   double tempx[BLOCK + 1];
   for (int basei = iDim; basei > 0; basei -= BLOCK) {
     int iend = std::max(basei - BLOCK, 0);
-    // para first
+    // this loop is ready for parallel
     for (int i = basei; i > iend; i--) {
       double xc = x[i];
       int kbeg = paraRanges[i].beg;
       int kend = paraRanges[i].end;
       for (int k = kbeg; k < kend; ++k) {
         int j = columns[k];
-        // cerr << "k=" << k << endl;
-        // cerr << "row=" << i << endl;
-        // cerr << _j << "*"<< j << endl;
         xc += values[k] * x[j];
-        // std::cerr.precision(60);
-        // cerr << values[k] - u_u[_k] << endl;
-        // cerr << u_u[_k] << "||" << values[k] << endl;
       }
       tempx[basei - i] = xc;
     }
-    // seq next
+    // barrier 
+    // this loop is ready for parallel
     for (int i = basei; i > iend; i--) {
       double xc = tempx[basei - i];
       int kbeg = seqRanges[i].beg;
