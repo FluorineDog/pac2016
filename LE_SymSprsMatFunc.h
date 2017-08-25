@@ -39,7 +39,7 @@ extern void allocate_VecReal(VecRealStru *V);
 extern void deallocate_VecReal(VecRealStru *V);
 
 // 稀疏矩阵加链
-// extern void SparseMatrix_adlink(SprsMatRealStru *pA);
+extern void SparseMatrix_adlink(SprsMatRealStru *pA);
 // 内存初始化。数目、指针变量置零
 extern void initMem_UMatReal(SprsUMatRealStru *U);
 // 指针变量内存释放
@@ -54,7 +54,7 @@ extern void LU_SymbolicSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU);
 extern void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU);
 //对称矩阵前推回代方法求解方程组
 extern void LE_FBackwardSym(SprsUMatRealStru *pFU,double b[],double x[]);
-/////////end of xdc added 2014-6-1cod6
+/////////end of xdc added 2014-6-16
 
 #endif
 

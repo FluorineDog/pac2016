@@ -20,26 +20,19 @@
 
 #include <stdio.h>
 
-#include <atomic>
-#include <condition_variable>
-#include <mutex>
-#include <thread>
-#include <vector>
 // 稀疏二维全矩阵结构
 typedef struct {
-
   int iDim; // 矩阵维数。（MAXN）
   int iNy;  // 矩阵元素实际数目。（NY1、NU）
   int iNymax; // 矩阵元素最大数目,iNy = iDim*(iDim+1)/2，分配维数时使用
   int *piJno; // 每个矩阵元素列号，维数iNymax+1。（JNOY1、JNOU）
   int *piIstart; // 每行矩阵元素在iJno中的起始位置，维数iDim+2。（IYD1、IYDU）
-  int *piIdiag;  // 对角线元素的位置。没有对角线元素时，
-                 //指向Aij，j>i且最接近,维数iDim+1。（IYD1、IYDU）
-  int *piLinkp;  // 位置纵向链,
-                 // 矩阵中同一列下一个元素的位置，矩阵最后一行元素的linkp指向第一个元素,维数iNymax+1（LP1、LPU）
-  int *piLinkn;  // 行号纵向链，下个元素的行号，
-                 //矩阵最后一行元素的linkn为第一元素行号,维数iNymax+1。（LR1、LRU）
-
+  int *
+      piIdiag;  // 对角线元素的位置。没有对角线元素时，指向Aij，j>i且最接近,维数iDim+1。（IYD1、IYDU）
+  int *piLinkp; // 位置纵向链,
+                // 矩阵中同一列下一个元素的位置，矩阵最后一行元素的linkp指向第一个元素,维数iNymax+1（LP1、LPU）
+  int *
+      piLinkn; // 行号纵向链，下个元素的行号，矩阵最后一行元素的linkn为第一元素行号,维数iNymax+1。（LR1、LRU）
 } SprsMatStru;
 
 // 实数向量
@@ -54,6 +47,19 @@ typedef struct {
   double *pdVal;   // 矩阵元素值，维数iNy
 } SprsMatRealStru;
 
+struct pair_ii_t {
+  int beg;
+  int end;
+};
+
+struct UMat_t {
+  int iDim;
+  int alloc_size;        // sum of cache lines of double
+  pair_ii_t *SeqRanges;  // seq part [beg, end)
+  pair_ii_t *paraRanges; // para part [beg, end)
+  int *columns;
+};
+
 // U'DU分解后的U阵结构描述
 typedef struct {
   int iDim;  //矩阵维数
@@ -64,17 +70,6 @@ typedef struct {
   int *j_u;  //上三角行向元素列号,iNzs+1
 } SprsUMatStru;
 
-struct pair_ii_t{
-  int beg;
-  int end;
-};
-struct UMat_t {
-  int iDim;
-  int alloc_size;            // sum of cache lines of double
-  pair_ii_t *SeqRanges;  // seq part [beg, end)
-  pair_ii_t *paraRanges; // para part [beg, end)
-  int *columns;
-};
 // LU分解后的U阵值描述
 typedef struct {
   SprsUMatStru uMax; //矩阵结构

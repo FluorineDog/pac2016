@@ -91,7 +91,7 @@ int main(int argc, const char *argv[]) {
 
   //添加打印结果相量的代码
   printf("Begin Print Result...(disabled)\n");
-  // WriteVectorX(X, nsize, "X1.txt");
+  WriteVectorX(X, 1, "X1.txt");
   printf("Print Result finish!\n");
   ////////////////////////
   //初始化X数组

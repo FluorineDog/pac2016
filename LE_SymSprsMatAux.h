@@ -1,13 +1,39 @@
-#ifndef LE_SYM_SPRS_MAT_AUX_FUNC_H_
-#define LE_SYM_SPRS_MAT_AUX_FUNC_H_
-#include <algorithm>
+//////////////////////////////////////////////////////////////////////
+// 版权 (C), 1988-1999, 中国电力科学研究院
+// 文 件 名: LE_SymSprsMat.c
+// 版本: V1.0       时间: 2014.12.31
+// 描    述: 线性方程组模块
+//           包含LE_SymSprsMatFunc.h声明的所有子程序
+// 其    他：用 #include <filename.h>
+// 格式来引用标准库的头文件（编译器将从标准库目录开始搜索）
+//           用 #include "filename.h"
+//           格式来引用非标准库的头文件（编译器将从用户的工作目录开始搜索）
+// 修改记录:       // 历史修改记录
+// 1. 时间:
+//    作者:
+//    修改内容:
+// 2. ...
+//////////////////////////////////////////////////////////////////////
+#include <cassert>
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+
 #include "LE_SymSprsMatDef.h"
 #include "LE_SymSprsMatFunc.h"
-
+//////////////////////////////////////////////////////////////////////
 // 函 数 名:          // initMem_MatReal
 // 描    述:          // 稀疏全实数矩阵内存初始化。数目、指针变量置零
+// 输入参数:          // 输入参数说明，包括每个参数的作
+// 用、取值说明及参数间关系。
 // 如参数非常复杂应举例说明。
+// 输出参数:          // 对输出参数的说明。
+// 返 回 值:          // 函数返回值的说明
+// 其    他:          // 其它说明
+//////////////////////////////////////////////////////////////////////
+
 void initMem_MatReal(SprsMatRealStru *A) {
   // 内存初始化。数目、指针变量置零
   A->Mat.iDim = 0;
@@ -18,101 +44,57 @@ void initMem_MatReal(SprsMatRealStru *A) {
   A->Mat.piLinkn = NULL;
   A->Mat.piLinkp = NULL;
 }
+//////////////////////////////////////////////////////////////////////
+// 函 数 名:          // allocate_MatReal
+// 描    述:          // 稀疏实数对称矩阵分配维数
+// 输入参数:          // SprsMatRealStru *pA：稀疏实数对阵矩阵或上三角矩阵
+// 输出参数:          // 无
+// 返 回 值:          // 无
+// 其    他:          // 调用该函数前稀疏实数对称矩阵的维数A->Mat.iDim已经确定
+// 因可能还有注入元引入，稀疏实数对阵矩阵A的元素实际数目不确定，故分配维数时一次将维数扩够
+//////////////////////////////////////////////////////////////////////
+void allocate_MatReal(SprsMatRealStru *A) {
+  int m = 0;
+  int n = 0;
 
-void aluss(SprsUMatRealStru *pFU) {
-#ifdef TRASH_CODE
-  constexpr int BLOCK = 36;
-  int *rs_u = pFU->uMax.rs_u;
-  int *j_u = pFU->uMax.j_u;
-  int iDim = pFU->uMax.iDim;
-  int barrier = 1;
-  std::map<int, int> countTable;
-  for (int i = 1; i <= iDim; ++i) {
-    int kbeg = rs_u[i];
-    int kend = rs_u[i + 1];
-    if (i - barrier >= BLOCK) {
-      barrier += BLOCK;
-    }
-    cerr << i << ": ";
-    if (kbeg < kend) {
-      int j = j_u[kbeg];
-      // cerr << j - i << ": ";
-      ++countTable[j - i];
-    }
-    for (int k = kbeg; k < kend; k++) {
-      int j = j_u[k];
-      cerr << j - i << " ";
-    }
-    cerr << endl;
-  }
-  int sum100 = 0;
-  constexpr int barrier2 = 33;
-  for (auto p : countTable) {
-    if (p.first < barrier2) {
-      cerr << p.first << ":: " << p.second << endl;
-    } else {
-      ++sum100;
-    }
-  }
-  cerr << barrier2 << "+:: " << sum100 << endl;
+  m = A->Mat.iDim + 1;
+  A->Mat.iNymax = m * (m + 1) / 2; // 矩阵元素最大数目
+  n = A->Mat.iNymax + 1;
 
-
-
-
-
-  int sumWork = 0;
-  int seqWork = 0;
-  int paraWork = 0;
-  using Tp = std::tuple<int, int, int>;
-  std::map<Tp, int> fuck;
-  for (int i = iDim; i > 0; --i) {
-    // cerr << "para: " << paraPart[i].size();
-    // cerr << "   seq:" << seqPart[i].size();
-    // cerr << endl;
-    ++fuck[std::make_tuple(seqPart[i].size() + paraPart[i].size(), seqPart[i].size(), paraPart[i].size())];
-    seqWork += seqPart[i].size();
-    paraWork += paraPart[i].size();
-  }
-
-  int sumCount = 0;
-  for(auto pp:fuck){
-    cerr << "\t\tsumCount:" << (sumCount+=pp.second);
-    cerr << "\t\tsum:" << std::get<0>(pp.first);
-    cerr << "\t\tseq:" << std::get<1>(pp.first);
-    cerr << "\t\tpara:" << std::get<2>(pp.first);
-    cerr << "\t\tcount:" << pp.second;
-    cerr << endl;
-  }
-  sumWork = seqWork + paraWork;
-
-  cerr << endl;
-  cerr << "paraBlock = " << BLOCK << endl;
-  cerr << "seqWork = " << seqWork << endl;
-  cerr << "paraWork = " << paraWork << endl;
-  cerr << "sumWork = " << sumWork << endl;
-  cerr << endl;
-
-  cout << "paraBlock = " << BLOCK << endl;
-  cout << "seqWork = " << seqWork << endl;
-  cout << "paraWork = " << paraWork << endl;
-  cout << "sumWork = " << sumWork << endl;
-  cout << endl;
-#endif
-}
-// 函 数 名:          // initMem_VecReal
-// 描    述:          // 稀疏实数向量内存初始化。数目、指针变量置零
-// 输入参数:          // 输入参数说明，包括每个参数的作
-// 用、取值说明及参数间关系。
-// 如参数非常复杂应举例说明。
-void initMem_VecReal(VecRealStru *V) {
-  // 内存初始化。数目、指针变量置零
-  V->iNy = 0;
-  V->pdVal = NULL;
+  A->Mat.piJno = (int *)calloc(n, sizeof(int));
+  A->Mat.piIstart = (int *)calloc(m + 1, sizeof(int));
+  A->Mat.piIdiag = (int *)calloc(m, sizeof(int));
+  A->Mat.piLinkp = (int *)calloc(n, sizeof(int));
+  A->Mat.piLinkn = (int *)calloc(n, sizeof(int));
+  A->pdVal = (double *)calloc(n, sizeof(double));
 }
 
+//////////////////////////////////////////////////////////////////////
+// 函 数 名:          // deallocate_MatReal
+// 描    述:          // 指针变量内存释放
+// 被deallocateNet()调用
+// 输入参数:          // 无
+// 输出参数:          // 无
+// 返 回 值:          // 无
+// 其    他:          // 其它说明
+//////////////////////////////////////////////////////////////////////
+void deallocate_MatReal(SprsMatRealStru *A) {
+  free(A->Mat.piJno);
+  free(A->Mat.piIstart);
+  free(A->Mat.piIdiag);
+  free(A->Mat.piLinkn);
+  free(A->Mat.piLinkp);
+}
+
+//////////////////////////////////////////////////////////////////////
+// 函 数 名:          // SparseMatrix_adlink
 // 描    述:          // 稀疏矩阵加链程序
 // 输入参数:          // SprsMatRealStru *pA：稀疏实数对阵矩阵或上三角矩阵
-static void SparseMatrix_adlink(SprsMatRealStru *pA) {
+// 输出参数:          // 无
+// 返 回 值:          // 无
+// 其    他:          // 其它说明,writted by xdc 2014/6/16
+//////////////////////////////////////////////////////////////////////
+void SparseMatrix_adlink(SprsMatRealStru *pA) {
   int iDim;
   int i, j, k, m, r;
   int jmn, irow, ny;
@@ -177,12 +159,16 @@ static void SparseMatrix_adlink(SprsMatRealStru *pA) {
   wb = NULL;
 }
 
+//////////////////////////////////////////////////////////////////////
+// 函 数 名:          // LU_EliminationTreeG
 // 描    述:          // 根据导纳矩阵G的结构获得消去树(G对称)
 // LU_SymbolicSymG调用
 // 输入参数:          // 保存有矩阵结构信息的G矩阵
 // 输出参数:          // 消去树信息，一维数组
+// 返 回 值:          // 无
 // 其    他:          // 不会影响G阵中矩阵的任何信息,created by xdc 2014/6/16
-static void LU_EliminationTreeG(SprsMatRealStru *pG, int *pParent) {
+//////////////////////////////////////////////////////////////////////
+void LU_EliminationTreeG(SprsMatRealStru *pG, int *pParent) {
   int jmn;
   int i, j, t;
   int kp, kn, iDim;
@@ -240,8 +226,8 @@ static void LU_EliminationTreeG(SprsMatRealStru *pG, int *pParent) {
 // 返 回 值:          // 无
 // 其    他:          // 不会影响G阵中矩阵的任何信息,created by xdc 2014/6/16
 //////////////////////////////////////////////////////////////////////
-static void LU_SetUMatECountsG(SprsMatRealStru *pG, int *pParent,
-                               SprsUMatRealStru *pU) {
+void LU_SetUMatECountsG(SprsMatRealStru *pG, int *pParent,
+                        SprsUMatRealStru *pU) {
   int i, j;
   int jmn, kp, kn, iDim;
   int *mark, *colcnt, *rowcnt;
@@ -329,8 +315,15 @@ static void LU_SetUMatECountsG(SprsMatRealStru *pG, int *pParent,
   return;
 }
 
+//////////////////////////////////////////////////////////////////////
+// 函 数 名:          // LU_SymbolicSymG
+// 描    述:          // 稀疏实数对称矩阵符号因子分解，确定U阵结构和元素个数
+//
 // 输入参数:          // G阵结构
 // 输出参数:          // U阵结构,并申请U阵内存，包括工作相量
+// 返 回 值:          // 无
+// 其    他:          // 不会影响G阵中矩阵的任何信息,created by xdc 2014/6/16
+//////////////////////////////////////////////////////////////////////
 void LU_SymbolicSymG(SprsMatRealStru *pG, SprsUMatRealStru *pFU) {
   int p;
   int i, j, k;
@@ -406,16 +399,24 @@ void LU_SymbolicSymG(SprsMatRealStru *pG, SprsUMatRealStru *pFU) {
 
   pFU->nzs = Lnz; //直接将Lnz设置成工作数组
   pFU->work = (double *)calloc(iDim + 1, sizeof(double));
+  // checkPoint(pFU->work,"LU_SymbolicSymG:work");
 
   free(Flag);
   free(Pattern);
-	free(pParent);
-	void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU);
+  free(pParent);
+  void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU);
 	AdditionLU_SymbolicSymG(pFU);
 }
 
+//////////////////////////////////////////////////////////////////////
+// 函 数 名:          // LU_NumbericSymG
+// 描    述:          //稀疏实数对称矩阵数值因子分解，确定U阵元素值
+//
 // 输入参数:          // G阵结构及G阵值
 // 输出参数:          // U阵中的值
+// 返 回 值:          // 无
+// 其    他:          // 不会影响G阵中矩阵的任何信息,created by xdc 2014/6/16
+//////////////////////////////////////////////////////////////////////
 void LU_NumbericSymG(SprsMatRealStru *pG, SprsUMatRealStru *pFU) {
   int i, j, k;
   int p, m, n;
@@ -460,9 +461,9 @@ void LU_NumbericSymG(SprsMatRealStru *pG, SprsUMatRealStru *pFU) {
 
     if (kp == 0) {
       dk = g[jmn];
-      if (false && dk >= 0.0 && fabs(dk) < 1.0e-20)
+      if (dk >= 0.0 && fabs(dk) < 1.0e-20)
         dk = 1.0e-20;
-      if (false && dk < 0.0 && fabs(dk) < 1.0e-20)
+      if (dk < 0.0 && fabs(dk) < 1.0e-20)
         dk = -1.0e-20;
       d_u[i] = dk;
       continue;
@@ -496,16 +497,94 @@ void LU_NumbericSymG(SprsMatRealStru *pG, SprsUMatRealStru *pFU) {
       nzs[j]++;
     }
 
-    if (false && dk >= 0.0 && fabs(dk) < 1.0e-20)
+    if (dk >= 0.0 && fabs(dk) < 1.0e-20)
       dk = 1.0e-20;
-    if (false && dk < 0.0 && fabs(dk) < 1.0e-20)
+    if (dk < 0.0 && fabs(dk) < 1.0e-20)
       dk = -1.0e-20;
+
     d_u[i] = dk;
   }
-  for(int i = 1; i <= iDim; ++i){
-    d_u[i] = 1 / d_u[i];
-  }
-	void AdditionLU_NumericSymG(SprsUMatRealStru *pFU);
+  void AdditionLU_NumericSymG(SprsUMatRealStru *pFU);
 	AdditionLU_NumericSymG(pFU);
 }
-#endif
+
+void aluss(SprsUMatRealStru *pFU) {
+  #ifdef TRASH_CODE
+    constexpr int BLOCK = 36;
+    int *rs_u = pFU->uMax.rs_u;
+    int *j_u = pFU->uMax.j_u;
+    int iDim = pFU->uMax.iDim;
+    int barrier = 1;
+    std::map<int, int> countTable;
+    for (int i = 1; i <= iDim; ++i) {
+      int kbeg = rs_u[i];
+      int kend = rs_u[i + 1];
+      if (i - barrier >= BLOCK) {
+        barrier += BLOCK;
+      }
+      cerr << i << ": ";
+      if (kbeg < kend) {
+        int j = j_u[kbeg];
+        // cerr << j - i << ": ";
+        ++countTable[j - i];
+      }
+      for (int k = kbeg; k < kend; k++) {
+        int j = j_u[k];
+        cerr << j - i << " ";
+      }
+      cerr << endl;
+    }
+    int sum100 = 0;
+    constexpr int barrier2 = 33;
+    for (auto p : countTable) {
+      if (p.first < barrier2) {
+        cerr << p.first << ":: " << p.second << endl;
+      } else {
+        ++sum100;
+      }
+    }
+    cerr << barrier2 << "+:: " << sum100 << endl;
+  
+  
+  
+  
+  
+    int sumWork = 0;
+    int seqWork = 0;
+    int paraWork = 0;
+    using Tp = std::tuple<int, int, int>;
+    std::map<Tp, int> fuck;
+    for (int i = iDim; i > 0; --i) {
+      // cerr << "para: " << paraPart[i].size();
+      // cerr << "   seq:" << seqPart[i].size();
+      // cerr << endl;
+      ++fuck[std::make_tuple(seqPart[i].size() + paraPart[i].size(), seqPart[i].size(), paraPart[i].size())];
+      seqWork += seqPart[i].size();
+      paraWork += paraPart[i].size();
+    }
+  
+    int sumCount = 0;
+    for(auto pp:fuck){
+      cerr << "\t\tsumCount:" << (sumCount+=pp.second);
+      cerr << "\t\tsum:" << std::get<0>(pp.first);
+      cerr << "\t\tseq:" << std::get<1>(pp.first);
+      cerr << "\t\tpara:" << std::get<2>(pp.first);
+      cerr << "\t\tcount:" << pp.second;
+      cerr << endl;
+    }
+    sumWork = seqWork + paraWork;
+  
+    cerr << endl;
+    cerr << "paraBlock = " << BLOCK << endl;
+    cerr << "seqWork = " << seqWork << endl;
+    cerr << "paraWork = " << paraWork << endl;
+    cerr << "sumWork = " << sumWork << endl;
+    cerr << endl;
+  
+    cout << "paraBlock = " << BLOCK << endl;
+    cout << "seqWork = " << seqWork << endl;
+    cout << "paraWork = " << paraWork << endl;
+    cout << "sumWork = " << sumWork << endl;
+    cout << endl;
+  #endif
+  }
