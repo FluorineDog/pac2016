@@ -10,7 +10,19 @@
 using std::cout;
 using std::cerr;
 using std::endl;
+
+#include <cassert>
+#include <map>
+#include <set>
+#include <vector>
+
+constexpr int BLOCK = 128;
+constexpr int THREAD_NUM = 4;
+using su_t = SprsUMatRealStru;
 #define dog_calloc(size, type) (type *)aligned_alloc(64, (size) * sizeof(type))
+
+
+
 // 描    述:          // 稀疏实数向量内存初始化。数目、指针变量置零
 void initMem_VecReal(VecRealStru *V) {
   // 内存初始化。数目、指针变量置零
@@ -34,13 +46,6 @@ void deallocate_VecReal(VecRealStru *V) {
   // 指针变量内存释放
   free(V->pdVal);
 }
-#include <cassert>
-#include <map>
-#include <set>
-#include <vector>
-
-constexpr int BLOCK = 64;
-using su_t = SprsUMatRealStru;
 void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
   int *rs_u = pFU->uMax.rs_u;
   int *j_u = pFU->uMax.j_u;
@@ -122,6 +127,11 @@ void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {
   auto values = pFU->values;
   memset(values, 0, pFU->dogUMat.alloc_size * sizeof(double));
   auto iDim = pFU->dogUMat.iDim;
+
+  for (int i = 1; i < iDim + 1; ++i) {
+    pFU->d_u[i] = 1 / pFU->d_u[i];
+  }
+
   int debug_i = -1, debug_j = -1;
   for (int basei = iDim; basei > 0; basei -= BLOCK) {
     int iend = std::max(basei - BLOCK, 0);
@@ -151,7 +161,7 @@ void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {
         }
         for (auto pair : mapping[j]) {
           int cur_j = pair.first;
-          if(cur_j > basei){
+          if (cur_j > basei) {
             break;
           }
           int cur_col_id = pair.second;
@@ -176,9 +186,7 @@ public:
       }
     }
   };
-  void Wait(int id) {
-
-  }
+  void Wait(int id) {}
 
 protected:
   volatile int lock[5][32];
@@ -215,65 +223,73 @@ protected:
   // std::atomic<unsigned int> step_;
   volatile unsigned int step_;
 };
-constexpr int THREAD_NUM = 0;
 static Barrier<THREAD_NUM + 1> barrierhead[2];
 // static Barrier<THREAD_NUM> barrier[50];
-static dogBarrier barrier[2];
+static Barrier<THREAD_NUM> barrier[2];
 
 static std::vector<std::thread> threads;
-static std::atomic<int> glo_id;
-static std::atomic<int> glo_id2;
+// static std::atomic<int> glo_id[2];
 static std::atomic<bool> die;
 static double *glo_b;
 static double *glo_x;
 
-static void workload(su_t *U, int private_id) {
+static double tempx[BLOCK + 1];
+static void workload(su_t *pFU, int private_id) {
   // double *d_u = U->d_u;
   // double *u_u = U->u_u;
   // int *rs_u = U->uMax.rs_u;
   // int *j_u = U->uMax.j_u;
-  int iDim = U->uMax.iDim;
+  int iDim = pFU->uMax.iDim;
+  auto paraRanges = pFU->dogUMat.paraRanges;
+  auto seqRanges = pFU->dogUMat.SeqRanges;
+  auto columns = pFU->dogUMat.columns;
+  auto values = pFU->values;
   while (true) {
     barrierhead[0].Wait();
-    for (int i = 0; i < 50; ++i) {
-      barrier[i & 1].Wait(private_id);
-    }
     if (die) {
       return;
     }
+    // int ia = glo_id[0].fetch_sub(1);
+    // int ib = glo_id[1].fetch_sub(1);
+    int ia = iDim - private_id;
+    int ib = iDim - private_id;
+    for (int basei = iDim; basei > 0; basei -= BLOCK) {
+      int iend = std::max(basei - BLOCK, 0);
+      // this loop is ready for parallel
+      // for (int i = basei; i > iend; i--)
+      while (ia > iend) {
+        int i = ia;
+        double xc = glo_x[i];
+        int kbeg = paraRanges[i].beg;
+        int kend = paraRanges[i].end;
+        for (int k = kbeg; k < kend; ++k) {
+          int j = columns[k];
+          xc += values[k] * glo_x[j];
+        }
+        tempx[basei - i] = xc;
+        // ia = glo_id[0].fetch_sub(1);
+        ia -= THREAD_NUM;
+      }
+      // barrier
+      barrier[0].Wait();
+      // this loop is ready for parallel
+      // for (int i = basei; i > iend; i--) {
+      while (ib > iend) {
+        int i = ib;
+        double xc = tempx[basei - i];
+        int kbeg = seqRanges[i].beg;
+        int kend = seqRanges[i].end;
+        for (int k = kbeg; k < kend; ++k) {
+          int j = columns[k];
+          xc += values[k] * tempx[basei - j];
+        }
+        glo_x[i] = xc;
+        // ib = glo_id[1].fetch_sub(1);
+        ib -= THREAD_NUM;
+      }
+      barrier[1].Wait();
+    }
     barrierhead[1].Wait();
-    // for(int i = 0; i < 60; ++i){
-    //   barrier.Wait();
-    // }
-    // int row = glo_id.fetch_sub(1);
-    // while (row > 0) {
-    //   // glo_b[row] += row;
-    //   row = glo_id.fetch_sub(1);
-    // }
-    // {
-    //   unique_lock<mutex> ulk(barrier_mutex);
-    //   ++done;
-    //   if (done == THREAD_NUM) {
-    //     global_cv.notify_all();
-    //   } else {
-    //     global_cv.wait(ulk, [&]() -> bool { return done == THREAD_NUM; });
-    //   }
-    // }
-    // row = glo_id2.fetch_sub(1);
-    // while (row > 0) {
-    //   // glo_b[row]++;
-    //   row = glo_id2.fetch_sub(1);
-    // }
-    // {
-    //   unique_lock<mutex> ulk(barrier3_mutex);
-    //   ++done;
-    //   if (done == THREAD_NUM) {
-    //     global_cv.notify_all();
-    //   } else {
-    //     global_cv.wait(ulk,
-    //                    [&]() -> bool { return done == 2 * THREAD_NUM + 1; });
-    //   }
-    // }
   }
 }
 
@@ -304,87 +320,84 @@ static void finalize_task(su_t *U) {
 // 输出参数:          // 右端项x，维数为pU的维数（解向量）
 // 其    他:          // 不会影响U阵中矩阵的任何信息,created by xdc 2014/6/16
 void LE_FBackwardSym(SprsUMatRealStru *pFU, double b[], double x[]) {
-  int i, j, k;
-  int ks, ke;
-  int iDim;
-  int *rs_u, *j_u;
-  double *d_u, *u_u;
-  double xc;
+  // int iDim;
+  // int *rs_u, *j_u;
+  // double *d_u, *u_u;
 
-  d_u = pFU->d_u;
-  u_u = pFU->u_u;
-  rs_u = pFU->uMax.rs_u;
-  j_u = pFU->uMax.j_u;
-  iDim = pFU->uMax.iDim;
+  double *d_u = pFU->d_u;
+  double *u_u = pFU->u_u;
+  int *rs_u = pFU->uMax.rs_u;
+  int *j_u = pFU->uMax.j_u;
+  int iDim = pFU->uMax.iDim;
   auto paraRanges = pFU->dogUMat.paraRanges;
   auto seqRanges = pFU->dogUMat.SeqRanges;
   auto columns = pFU->dogUMat.columns;
   auto values = pFU->values;
-  // cerr << "fuck";
 
-  // barrierhead[0].Wait();
-  // barrierhead[1].Wait();
-  // // peer to peer
-
-  for (i = 1; i <= iDim; i++) {
+  for (int i = 1; i <= iDim; i++) {
     // b[i] -= i + 1;
     x[i] = b[i];
   }
 
-  for (i = 1; i <= iDim; i++) {
-    xc = x[i];
-    ks = rs_u[i];
-    ke = rs_u[i + 1];
+  for (int i = 1; i <= iDim; i++) {
+    double xc = x[i];
+    int ks = rs_u[i];
+    int ke = rs_u[i + 1];
 
-    for (k = ks; k < ke; k++) {
-      j = j_u[k];
+    for (int k = ks; k < ke; k++) {
+      int j = j_u[k];
       x[j] -= u_u[k] * xc;
       assert(u_u[k] == u_u[k]);
     }
   }
 
-  for (i = 1; i <= iDim; i++)
-    x[i] /= d_u[i];
+  for (int i = 1; i <= iDim; i++)
+    x[i] *= d_u[i];
 
-  // for (i = iDim - 1; i >= 1; i--) {
-  //   ks = rs_u[i];
-  //   ke = rs_u[i + 1] - 1;
-  //   xc = x[i];
+  // for (int i = iDim - 1; i >= 1; i--) {
+  //   int ks = rs_u[i];
+  //   int ke = rs_u[i + 1] - 1;
+  //   double xc = x[i];
 
-  //   for (k = ke; k >= ks; k--) {
-  //     j = j_u[k];
+  //   for (int k = ke; k >= ks; k--) {
+  //     int j = j_u[k];
   //     xc -= u_u[k] * x[j];
   //   }
   //   x[i] = xc;
   // }
+  glo_x = x;
+  glo_b = b;
+  barrierhead[0].Wait();
+  barrierhead[1].Wait();
+  
+  //    double tempx[BLOCK + 1];
+  // for (int basei = iDim; basei > 0; basei -= BLOCK) {
+  //   int iend = std::max(basei - BLOCK, 0);
+  //   // this loop is ready for parallel
+  //   for (int i = basei; i > iend; i--) {
+  //     double xc = x[i];
+  //     int kbeg = paraRanges[i].beg;
+  //     int kend = paraRanges[i].end;
+  //     for (int k = kbeg; k < kend; ++k) {
+  //       int j = columns[k];
+  //       xc += values[k] * x[j];
+  //     }
+  //     tempx[basei - i] = xc;
+  //   }
+  //   // barrier 
+  //   // this loop is ready for parallel
+  //   for (int i = basei; i > iend; i--) {
+  //     double xc = tempx[basei - i];
+  //     int kbeg = seqRanges[i].beg;
+  //     int kend = seqRanges[i].end;
+  //     for (int k = kbeg; k < kend; ++k) {
+  //       int j = columns[k];
+  //       xc += values[k] * tempx[basei - j];
+  //     }
+  //     x[i] = xc;
+  //   }
+  // }
 
-  double tempx[BLOCK + 1];
-  for (int basei = iDim; basei > 0; basei -= BLOCK) {
-    int iend = std::max(basei - BLOCK, 0);
-    // this loop is ready for parallel
-    for (int i = basei; i > iend; i--) {
-      double xc = x[i];
-      int kbeg = paraRanges[i].beg;
-      int kend = paraRanges[i].end;
-      for (int k = kbeg; k < kend; ++k) {
-        int j = columns[k];
-        xc += values[k] * x[j];
-      }
-      tempx[basei - i] = xc;
-    }
-    // barrier 
-    // this loop is ready for parallel
-    for (int i = basei; i > iend; i--) {
-      double xc = tempx[basei - i];
-      int kbeg = seqRanges[i].beg;
-      int kend = seqRanges[i].end;
-      for (int k = kbeg; k < kend; ++k) {
-        int j = columns[k];
-        xc += values[k] * tempx[basei - j];
-      }
-      x[i] = xc;
-    }
-  }
 }
 
 // 描    述:          //内存初始化。数目、指针变量置零
