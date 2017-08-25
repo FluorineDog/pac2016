@@ -16,12 +16,10 @@ using std::endl;
 #include <set>
 #include <vector>
 
-constexpr int BLOCK = 128;
-constexpr int THREAD_NUM = 4;
+constexpr int BLOCK = 240;
+constexpr int THREAD_NUM = 4; // magic !! don't modify !!
 using su_t = SprsUMatRealStru;
 #define dog_calloc(size, type) (type *)aligned_alloc(64, (size) * sizeof(type))
-
-
 
 // 描    述:          // 稀疏实数向量内存初始化。数目、指针变量置零
 void initMem_VecReal(VecRealStru *V) {
@@ -128,10 +126,6 @@ void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {
   memset(values, 0, pFU->dogUMat.alloc_size * sizeof(double));
   auto iDim = pFU->dogUMat.iDim;
 
-  for (int i = 1; i < iDim + 1; ++i) {
-    pFU->d_u[i] = 1 / pFU->d_u[i];
-  }
-
   int debug_i = -1, debug_j = -1;
   for (int basei = iDim; basei > 0; basei -= BLOCK) {
     int iend = std::max(basei - BLOCK, 0);
@@ -177,20 +171,46 @@ void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {
 using std::unique_lock;
 using std::lock_guard;
 
-class dogBarrier {
+class dogBarrier  {
 public:
+  static constexpr int barrier_thread = 4;
   dogBarrier() {
+    assert(THREAD_NUM == barrier_thread);
     for (auto &line : lock) {
       for (auto &lock : line) {
         lock = 1;
       }
     }
   };
-  void Wait(int id) {}
+  void Wait(int id) {
+    // cerr << "Damn";
+    lock[0][id ^ 0x1] = 0;
+    lock[1][id ^ 0x2] = 0;
+    // lock[2][id ^ 0x4] = 0;
+    // lock[3][id ^ 0x8] = 0;
+    // lock[4][id ^ 0x10] = 0;
+    // lock[5][id ^ 0x20] = 0;
+    while (lock[0][id]);
+    while (lock[1][id]);
+    // while (lock[2][id]);
+    // while (lock[3][id]);
+    // while(lock[4][id]);
+    // while(lock[5][id]);
+    lock[0][id] = 1;
+    lock[1][id] = 1;
+    // lock[2][id] = 1;
+    // lock[3][id] = 1;
+    // lock[4][id] = 1;
+    // lock[5][id] = 1;
+  }
 
 protected:
-  volatile int lock[5][32];
+  // volatile int lock[3][8];
+  volatile int lock[2][THREAD_NUM]; // barrier_thread
+  // volatile int lock[2][THREAD_NUM]; // barrier_thread
+  // volatile int lock[6][64];
 };
+
 template <int n_> class Barrier {
 public:
   Barrier() : nwait_(0), step_(0) {}
@@ -225,7 +245,8 @@ protected:
 };
 static Barrier<THREAD_NUM + 1> barrierhead[2];
 // static Barrier<THREAD_NUM> barrier[50];
-static Barrier<THREAD_NUM> barrier[2];
+// static Barrier<THREAD_NUM> barrier[2];
+static dogBarrier barrier[2];
 
 static std::vector<std::thread> threads;
 // static std::atomic<int> glo_id[2];
@@ -234,16 +255,18 @@ static double *glo_b;
 static double *glo_x;
 
 static double tempx[BLOCK + 1];
-static void workload(su_t *pFU, int private_id) {
+
+// static std::atomic<int> count[2];
+static __attribute__((hot)) void workload (const su_t *__restrict pFU, int private_id) {
   // double *d_u = U->d_u;
   // double *u_u = U->u_u;
   // int *rs_u = U->uMax.rs_u;
   // int *j_u = U->uMax.j_u;
   int iDim = pFU->uMax.iDim;
-  auto paraRanges = pFU->dogUMat.paraRanges;
-  auto seqRanges = pFU->dogUMat.SeqRanges;
-  auto columns = pFU->dogUMat.columns;
-  auto values = pFU->values;
+  const auto paraRanges = pFU->dogUMat.paraRanges;
+  const auto seqRanges = pFU->dogUMat.SeqRanges;
+  const auto columns = pFU->dogUMat.columns;
+  const auto values = pFU->values;
   while (true) {
     barrierhead[0].Wait();
     if (die) {
@@ -262,6 +285,7 @@ static void workload(su_t *pFU, int private_id) {
         double xc = glo_x[i];
         int kbeg = paraRanges[i].beg;
         int kend = paraRanges[i].end;
+        #pragma ivdep
         for (int k = kbeg; k < kend; ++k) {
           int j = columns[k];
           xc += values[k] * glo_x[j];
@@ -271,7 +295,7 @@ static void workload(su_t *pFU, int private_id) {
         ia -= THREAD_NUM;
       }
       // barrier
-      barrier[0].Wait();
+      barrier[0].Wait(private_id);
       // this loop is ready for parallel
       // for (int i = basei; i > iend; i--) {
       while (ib > iend) {
@@ -279,6 +303,7 @@ static void workload(su_t *pFU, int private_id) {
         double xc = tempx[basei - i];
         int kbeg = seqRanges[i].beg;
         int kend = seqRanges[i].end;
+        #pragma ivdep
         for (int k = kbeg; k < kend; ++k) {
           int j = columns[k];
           xc += values[k] * tempx[basei - j];
@@ -287,7 +312,7 @@ static void workload(su_t *pFU, int private_id) {
         // ib = glo_id[1].fetch_sub(1);
         ib -= THREAD_NUM;
       }
-      barrier[1].Wait();
+      barrier[1].Wait(private_id);
     }
     barrierhead[1].Wait();
   }
@@ -319,11 +344,11 @@ static void finalize_task(su_t *U) {
 // 输入参数:          // U阵结构及U阵值，右端项b
 // 输出参数:          // 右端项x，维数为pU的维数（解向量）
 // 其    他:          // 不会影响U阵中矩阵的任何信息,created by xdc 2014/6/16
-void LE_FBackwardSym(SprsUMatRealStru *pFU, double b[], double x[]) {
+void LE_FBackwardSym(SprsUMatRealStru *pFU, double *__restrict b,
+                     double *__restrict x) {
   // int iDim;
   // int *rs_u, *j_u;
   // double *d_u, *u_u;
-
   double *d_u = pFU->d_u;
   double *u_u = pFU->u_u;
   int *rs_u = pFU->uMax.rs_u;
@@ -339,20 +364,20 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double b[], double x[]) {
     x[i] = b[i];
   }
 
-  for (int i = 1; i <= iDim; i++) {
-    double xc = x[i];
-    int ks = rs_u[i];
-    int ke = rs_u[i + 1];
+  // for (int i = 1; i <= iDim; i++) {
+  //   double xc = x[i];
+  //   int ks = rs_u[i];
+  //   int ke = rs_u[i + 1];
 
-    for (int k = ks; k < ke; k++) {
-      int j = j_u[k];
-      x[j] -= u_u[k] * xc;
-      assert(u_u[k] == u_u[k]);
-    }
-  }
+  //   for (int k = ks; k < ke; k++) {
+  //     int j = j_u[k];
+  //     x[j] -= u_u[k] * xc;
+  //     assert(u_u[k] == u_u[k]);
+  //   }
+  // }
 
-  for (int i = 1; i <= iDim; i++)
-    x[i] *= d_u[i];
+  // for (int i = 1; i <= iDim; i++)
+  // x[i] /= d_u[i];
 
   // for (int i = iDim - 1; i >= 1; i--) {
   //   int ks = rs_u[i];
@@ -367,10 +392,12 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double b[], double x[]) {
   // }
   glo_x = x;
   glo_b = b;
+  // count[0] = iDim; 
+  // count[1] = iDim;
   barrierhead[0].Wait();
   barrierhead[1].Wait();
-  
-  //    double tempx[BLOCK + 1];
+
+  // double tempx[BLOCK + 1];
   // for (int basei = iDim; basei > 0; basei -= BLOCK) {
   //   int iend = std::max(basei - BLOCK, 0);
   //   // this loop is ready for parallel
@@ -384,7 +411,7 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double b[], double x[]) {
   //     }
   //     tempx[basei - i] = xc;
   //   }
-  //   // barrier 
+  //   // barrier
   //   // this loop is ready for parallel
   //   for (int i = basei; i > iend; i--) {
   //     double xc = tempx[basei - i];
@@ -397,10 +424,10 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double b[], double x[]) {
   //     x[i] = xc;
   //   }
   // }
-
 }
 
-// 描    述:          //内存初始化。数目、指针变量置零
+// 描    述:          
+//内存初始化。数目、指针变量置零
 void initMem_UMatReal(SprsUMatRealStru *U) {
   U->d_u = NULL;
   U->u_u = NULL;
