@@ -1,11 +1,12 @@
 
 #include "LE_SymSprsMatAux.h"
 #include <atomic>
-#include <thread>
+#include <condition_variable>
+#include <iostream>
 #include <memory>
 #include <mutex>
-#include <condition_variable>
-#include <iostream> 
+#include <thread>
+
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -159,23 +160,88 @@ void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {
   dog_init_task(pFU);
 }
 
-using std::mutex;
-using std::atomic;
 using std::unique_lock;
 using std::lock_guard;
 
+class dogBarrier {
+public:
+  dogBarrier() {
+    for (auto &line : lock) {
+      for (auto &lock : line) {
+        lock = 1;
+      }
+    }
+  };
+  void Wait(int id) {
+    lock[0][id ^ 0x1] = 0;
+    lock[1][id ^ 0x2] = 0;
+    lock[2][id ^ 0x4] = 0;
+    lock[3][id ^ 0x8] = 0;
+    lock[4][id ^ 0x10] = 0;
+    while (lock[0][id]) {
+    }
+    while (lock[1][id]) {
+    }
+    while (lock[2][id]) {
+    }
+    while (lock[3][id]) {
+    }
+    while (lock[4][id]) {
+    }
+    lock[0][id ] = 1;
+    lock[1][id ] = 1;
+    lock[2][id ] = 1;
+    lock[3][id ] = 1;
+    lock[4][id ] = 1;
+  }
+
+protected:
+  volatile int lock[5][32];
+};
+template <int n_> class Barrier {
+public:
+  Barrier() : nwait_(0), step_(0) {}
+
+  bool Wait() {
+    unsigned int step = step_;
+
+    if (nwait_.fetch_add(1) == n_ - 1) {
+      // OK, last thread to come.
+      // step_.fetch_add(1);
+      ++step_;
+      nwait_.store(0); // XXX: maybe can use relaxed ordering here ??
+                       // yes, just use different barriers intersectually
+      return true;
+    } else {
+      // Run in circles and scream like a little girl.
+      while (step_ == step)
+        ;
+      return false;
+    }
+  }
+
+protected:
+  /* Number of synchronized threads. */
+  /* Number of threads currently spinning.  */
+  std::atomic<unsigned int> nwait_;
+
+  /* Number of barrier syncronizations completed so far,
+   * it's OK to wrap.  */
+  // std::atomic<unsigned int> step_;
+  volatile unsigned int step_;
+};
+constexpr int THREAD_NUM = 32;
+static Barrier<THREAD_NUM + 1> barrierhead[2];
+// static Barrier<THREAD_NUM> barrier[50];
+static dogBarrier barrier[2];
+
 static std::vector<std::thread> threads;
-static std::condition_variable global_cv;
-static std::mutex barrier_mutex;
 static std::atomic<int> glo_id;
 static std::atomic<int> glo_id2;
+static std::atomic<bool> die;
 static double *glo_b;
 static double *glo_x;
-static std::atomic<int> die(0);
-static std::atomic<int> readiness(0);
-static std::atomic<int> done(0);
 
-constexpr int THREAD_NUM = 1;
 static void workload(su_t *U, int private_id) {
   // double *d_u = U->d_u;
   // double *u_u = U->u_u;
@@ -183,31 +249,46 @@ static void workload(su_t *U, int private_id) {
   // int *j_u = U->uMax.j_u;
   int iDim = U->uMax.iDim;
   while (true) {
-    {
-      unique_lock<mutex> ulk(barrier_mutex);
-      global_cv.wait(ulk, [&]() -> bool { return readiness || die; });
-      --readiness;
+    barrierhead[0].Wait();
+    for (int i = 0; i < 50; ++i) {
+      barrier[i&1].Wait(private_id);
     }
     if (die) {
       return;
     }
-    int row = glo_id.fetch_sub(1);
-    while (row > 0) {
-      // glo_b[row] += row;
-      row = glo_id.fetch_sub(1);
-    }
-    ++done;
-    while (done != THREAD_NUM) {
-    }
-    row = glo_id2.fetch_sub(1);
-    while (row > 0) {
-      // glo_b[row]++;
-      row = glo_id2.fetch_sub(1);
-    }
-    ++done;
-    while (done != 2 * THREAD_NUM) {
-    }
-    
+    barrierhead[1].Wait();
+    // for(int i = 0; i < 60; ++i){
+    //   barrier.Wait();
+    // }
+    // int row = glo_id.fetch_sub(1);
+    // while (row > 0) {
+    //   // glo_b[row] += row;
+    //   row = glo_id.fetch_sub(1);
+    // }
+    // {
+    //   unique_lock<mutex> ulk(barrier_mutex);
+    //   ++done;
+    //   if (done == THREAD_NUM) {
+    //     global_cv.notify_all();
+    //   } else {
+    //     global_cv.wait(ulk, [&]() -> bool { return done == THREAD_NUM; });
+    //   }
+    // }
+    // row = glo_id2.fetch_sub(1);
+    // while (row > 0) {
+    //   // glo_b[row]++;
+    //   row = glo_id2.fetch_sub(1);
+    // }
+    // {
+    //   unique_lock<mutex> ulk(barrier3_mutex);
+    //   ++done;
+    //   if (done == THREAD_NUM) {
+    //     global_cv.notify_all();
+    //   } else {
+    //     global_cv.wait(ulk,
+    //                    [&]() -> bool { return done == 2 * THREAD_NUM + 1; });
+    //   }
+    // }
   }
 }
 
@@ -220,14 +301,10 @@ static void dog_init_task(su_t *U) {
 }
 
 static void finalize_task(su_t *U) {
-  {
-    lock_guard<mutex> lck(barrier_mutex);
-    die.store(true);
-    cerr << "dying" << die;
-    // readiness = THREAD_NUM;
+  die = true;
+  if (threads.size()) {
+    barrierhead[0].Wait();
   }
-  cerr << "recy" << endl;
-  global_cv.notify_all();
   for (auto &th : threads) {
     cerr << "recyclcing" << endl;
     cerr << "dying" << die;
@@ -258,48 +335,54 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, double b[], double x[]) {
   auto seqRange = pFU->dogUMat.SeqRanges;
   auto columns = pFU->dogUMat.columns;
   auto values = pFU->values;
-  {
-    lock_guard<mutex> lck(barrier_mutex);
-    glo_b = b;
-    glo_x = b;
-    glo_id.store(iDim);
-    glo_id2.store(iDim);
-    done.store(0);
-    readiness.store(THREAD_NUM);
-  }
-  global_cv.notify_all();
-  while (done != 2 * THREAD_NUM){}
-  for (i = 1; i <= iDim; i++){
-    // b[i] -= i + 1;
-    x[i] = b[i];    
-  }
+  // cerr << "fuck";
 
-  for (i = 1; i <= iDim; i++) {
-    xc = x[i];
-    ks = rs_u[i];
-    ke = rs_u[i + 1];
+  barrierhead[0].Wait();
+  barrierhead[1].Wait();
+  // peer to peer
 
-    for (k = ks; k < ke; k++) {
-      j = j_u[k];
-      x[j] -= u_u[k] * xc;
-      assert(u_u[k] == u_u[k]);
-    }
-  }
+  // {
+  //   cerr << "fuck";
+  //   unique_lock<mutex> ulk(barrier3_mutex);
+  //   ++done;
+  //   if (done == THREAD_NUM) {
+  //     global_cv.notify_all();
+  //   } else {
+  //     global_cv.wait(ulk, [&]() -> bool { return done == 1 + THREAD_NUM; });
+  //   }
+  // }
 
-  for (i = 1; i <= iDim; i++)
-    x[i] /= d_u[i];
+  // for (i = 1; i <= iDim; i++) {
+  //   // b[i] -= i + 1;
+  //   x[i] = b[i];
+  // }
 
-  for (i = iDim - 1; i >= 1; i--) {
-    ks = rs_u[i];
-    ke = rs_u[i + 1] - 1;
-    xc = x[i];
+  // for (i = 1; i <= iDim; i++) {
+  //   xc = x[i];
+  //   ks = rs_u[i];
+  //   ke = rs_u[i + 1];
 
-    for (k = ke; k >= ks; k--) {
-      j = j_u[k];
-      xc -= u_u[k] * x[j];
-    }
-    x[i] = xc;
-  }
+  //   for (k = ks; k < ke; k++) {
+  //     j = j_u[k];
+  //     x[j] -= u_u[k] * xc;
+  //     assert(u_u[k] == u_u[k]);
+  //   }
+  // }
+
+  // for (i = 1; i <= iDim; i++)
+  //   x[i] /= d_u[i];
+
+  // for (i = iDim - 1; i >= 1; i--) {
+  //   ks = rs_u[i];
+  //   ke = rs_u[i + 1] - 1;
+  //   xc = x[i];
+
+  //   for (k = ke; k >= ks; k--) {
+  //     j = j_u[k];
+  //     xc -= u_u[k] * x[j];
+  //   }
+  //   x[i] = xc;
+  // }
 }
 
 // 描    述:          //内存初始化。数目、指针变量置零
