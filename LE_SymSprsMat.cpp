@@ -32,9 +32,11 @@ int *U_index, *UT_index;
 double **UT, **U;
 int **UT_ein, **U_ein;
 
-int **UT_line, **U_line;
-double **UT_ele, **U_ele;
-int **UT_elein, **U_elein;
+int *UT_groupstart;
+int *UT_linestart, *U_linestart;
+int *UT_line, *U_line;
+double *UT_ele, *U_ele;
+int *UT_elein, *U_elein;
 
 int block_size;
 
@@ -746,41 +748,55 @@ void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
     //exit(0);
 
 
-    //// seralize
-    //for(i = 1; i <= iDim && UT_group[i][0] != 1; ++i);
-    //UT_line = (int **)calloc(i, sizeof(int *));
-    //UT_ele  = (double **)calloc(i, sizeof(double *));
-    //UT_elein = (int **)calloc(i, sizeof(double *));
+    // seralize
+    for(i = 1; i <= iDim && UT_group[i][0] != 1; ++i);
+    // point to lineStart
+    UT_groupstart = (int *)calloc(i, sizeof(int));
+    UT_groupstart[0] = 0;
 
-    //// the group index
-    //for(i = 1; i <= iDim && UT_group[i][0] != 1; ++i){
-    //    // alloc space
-    //    n = 0;
-    //    for(j = 1; j < UT_group[i][0]; ++j)
-    //        n += UT_ein[UT_group[i][j]][0];
-    //    UT_line[i] = (int *)calloc(n, sizeof(int));
-    //    UT_ele[i] = (double *)calloc(n, sizeof(double));
-    //    UT_elein[i] = (int *)calloc(n, sizeof(int));
-    //    UT_line[i][0] = 1;
+    // point to line
+    UT_linestart = (int *)calloc(iDim + 1, sizeof(int));
+    UT_linestart[0] = 0;
 
-    //    // the index in a group, write vals
-    //    for(j = 1; j < UT_group[i][0]; ++j){
-    //        // the line in UT_group
-    //        m = UT_group[i][j];
-    //        for(k = 1; k < UT_ein[m][0]; ++k){
-    //            UT_line[i][UT_line[i][0]] = m;
-    //            UT_ele[i][UT_line[i][0]] = UT[m][k];
-    //            UT_elein[i][UT_line[i][0]] = UT_ein[m][k];
-    //            UT_line[i][0] ++;
-    //        }
-    //    }
-    //}
+    UT_line = (int *)calloc(iDim * (iDim + 1) / 2, sizeof(int));
+    UT_ele  = (double *)calloc(iDim * (iDim + 1) / 2, sizeof(double));
+    UT_elein = (int *)calloc(iDim * (iDim + 1) / 2, sizeof(double));
+
+    // line counter
+    int counter = 0, lcounter = 1, gcounter = 1;
+    for(i = 1; i <= iDim && UT_group[i][0] != 1; ++i){
+
+        // the index in a group, write vals
+        for(j = 1; j < UT_group[i][0]; ++j){
+            // the line in UT_group
+            m = UT_group[i][j];
+            for(k = 1; k < UT_ein[m][0]; ++k){
+                UT_line[counter] = m;
+                UT_ele[counter] = UT[m][k];
+                UT_elein[counter] = UT_ein[m][k];
+                counter++;
+            }
+            UT_linestart[lcounter] = counter;
+            lcounter++;
+        }
+        UT_groupstart[gcounter] = lcounter - 1;
+        gcounter++;
+    }
+    UT_groupstart[gcounter] = -1;
 
     // <!-- debug -->
-    //for(i = 1; UT_group[i][0] != 1; ++i){
+    //int groupS, groupE, lineS, lineE;
+    //for(i = 0; UT_groupstart[i + 1] != -1; ++i){
+    //    groupS = UT_groupstart[i];
+    //    groupE = UT_groupstart[i+1];
+    //    //#pragma omp parallel for private(j, k, lineS, lineE)
     //    printf("%4d: ", i);
-    //    for(j = 1; j < UT_line[i][0]; ++j){
-    //        printf("%4d %15le %4d  ", UT_line[i][j], UT_ele[i][j], UT_elein[i][j]);
+    //    for(j = groupS; j < groupE; ++j ){
+    //        lineS = UT_linestart[j];
+    //        lineE = UT_linestart[j+1];
+    //        for(k = lineS; k < lineE; ++k){
+    //            printf("%4d %15le %4d  ", UT_line[k], UT_ele[k], UT_elein[k]);
+    //        }
     //    }
     //    putchar('\n');
     //}
@@ -834,43 +850,51 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU,double b[],double x[])
         x[i] = b[i];
 
     // ->> modified, not-seralize
-    int line, lineElNum;
-    for(i = 1; i <= iDim && UT_group[i][0] != 1; ++i){
-        if(UT_group[i][0] >=5){
-            #pragma omp parallel for private(line, lineElNum, k, xc) shared(UT_group, UT_ein, UT)
-            for(j = 1; j < UT_group[i][0]; ++j){
-                line = UT_group[i][j];
-                lineElNum = UT_ein[line][0];
-                xc = x[line];
-                for(k = 1; k < lineElNum; ++k){
-                    xc -= UT[line][k] * x[UT_ein[line][k]];
-                }
-                x[line] = xc;
-            }
-        } else {
-            for(j = 1; j < UT_group[i][0]; ++j){
-                line = UT_group[i][j];
-                lineElNum = UT_ein[line][0];
-                xc = x[line];
-                for(k = 1; k < lineElNum; ++k){
-                    xc -= UT[line][k] * x[UT_ein[line][k]];
-                }
-                x[line] = xc;
-            }
-        }
-    }
+    //int line, lineElNum, total;
+    //for(i = 2; i <= iDim && UT_group[i][0] != 1; ++i){
+    //    total = UT_group[i][0];
+    //    if(UT_group[i][0] >=5){
+    //        #pragma omp parallel for private(line, lineElNum, k, xc) // shared(UT_group, UT_ein, UT)
+    //        for(j = 1; j < total; ++j){
+    //            line = UT_group[i][j];
+    //            lineElNum = UT_ein[line][0];
+    //            xc = x[line];
+    //            for(k = 1; k < lineElNum; ++k){
+    //                xc -= UT[line][k] * x[UT_ein[line][k]];
+    //            }
+    //            x[line] = xc;
+    //        }
+    //    } else {
+    //        for(j = 1; j < total; ++j){
+    //            line = UT_group[i][j];
+    //            lineElNum = UT_ein[line][0];
+    //            xc = x[line];
+    //            for(k = 1; k < lineElNum; ++k){
+    //                xc -= UT[line][k] * x[UT_ein[line][k]];
+    //            }
+    //            x[line] = xc;
+    //        }
+    //    }
+    //}
 
     static int temp=0;
     printf("%d\n", temp);
     temp++;
 
-    //// ->> modified, serialize
-    //for(i = 1; UT_group[i][0] != 1; ++i){
-    //    //#pragma omp parallel for private(j) shared(UT_line, UT_ele, UT_elein, i)
-    //    for(j = 1; j < UT_line[i][0]; ++j){
-    //        x[UT_line[i][j]] -= UT_ele[i][j] * x[UT_elein[i][j]];
-    //    }
-    //}
+    // ->> modified, serialize
+    int groupS, groupE, lineS, lineE;
+    for(i = 0; UT_groupstart[i + 1] != -1; ++i){
+        groupS = UT_groupstart[i];
+        groupE = UT_groupstart[i+1];
+        #pragma omp parallel for private(j, k, lineS, lineE)
+        for(j = groupS; j < groupE; ++j ){
+            lineS = UT_linestart[j];
+            lineE = UT_linestart[j+1];
+            for(k = lineS; k < lineE; ++k){
+                x[UT_line[k]] -= UT_ele[k] * x[UT_elein[k]];
+            }
+        }
+    }
 
     //// ->> original
     //for(i = 1; i <= iDim; i++)
