@@ -9,7 +9,6 @@
 #include <pthread.h>
 #include <thread>
 
-
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -18,10 +17,10 @@ using std::endl;
 #include <map>
 #include <set>
 #include <vector>
-typedef double __attribute((aligned(64))) aligned_double;
 
-constexpr int BLOCK = 4000;
-constexpr int THREAD_NUM = 0; // magic !! don't modify !!
+typedef double __attribute((aligned(64))) aligned_double;
+constexpr int BLOCK = 512;
+constexpr int THREAD_NUM = 4; // magic !! don't modify !!
 using su_t = SprsUMatRealStru;
 #define dog_calloc(size, type)                                                 \
   (type *)aligned_alloc(64, ((size) * sizeof(type) + 63) & ~63);
@@ -121,7 +120,7 @@ static void dog_init_task(su_t *U);
 using std::pair;
 using std::make_pair;
 void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {
-// init
+  // init
   int *rs_u = pFU->uMax.rs_u;
   int *j_u = pFU->uMax.j_u;
   double *u_u = pFU->u_u;
@@ -180,7 +179,7 @@ using std::lock_guard;
 // #pragma float_control(fast, on, push)
 class dogBarrier {
 public:
-  static constexpr int barrier_thread = 4;
+  static constexpr int barrier_thread = 8;
   dogBarrier() {
     assert(!THREAD_NUM || THREAD_NUM == barrier_thread);
     for (auto &line : lock) {
@@ -193,7 +192,7 @@ public:
     // cerr << "Damn";
     lock[0][id ^ 0x1] = 0;
     lock[1][id ^ 0x2] = 0;
-    // lock[2][id ^ 0x4] = 0;
+    lock[2][id ^ 0x4] = 0;
     // lock[3][id ^ 0x8] = 0;
     // lock[4][id ^ 0x10] = 0;
     // lock[5][id ^ 0x20] = 0;
@@ -201,13 +200,13 @@ public:
       ;
     while (lock[1][id])
       ;
-    // while (lock[2][id]);
+    while (lock[2][id]);
     // while (lock[3][id]);
     // while(lock[4][id]);
     // while(lock[5][id]);
     lock[0][id] = 1;
     lock[1][id] = 1;
-    // lock[2][id] = 1;
+    lock[2][id] = 1;
     // lock[3][id] = 1;
     // lock[4][id] = 1;
     // lock[5][id] = 1;
@@ -215,7 +214,7 @@ public:
 
 protected:
   // volatile int lock[3][8];
-  volatile int lock[2][THREAD_NUM]; // barrier_thread
+  volatile int lock[3][THREAD_NUM]; // barrier_thread
   // volatile int lock[2][THREAD_NUM]; // barrier_thread
   // volatile int lock[6][64];
 };
@@ -282,8 +281,6 @@ static __attribute__((hot)) void workload(const su_t *__restrict pFU,
     if (die) {
       return;
     }
-    // int ia = glo_id[0].fetch_sub(1);
-    // int ib = glo_id[1].fetch_sub(1);
     int ia = iDim - private_id;
     int ib = iDim - private_id;
     for (int basei = iDim; basei > 0; basei -= BLOCK) {
@@ -295,7 +292,8 @@ static __attribute__((hot)) void workload(const su_t *__restrict pFU,
         double xc = glo_x[i];
         int kbeg = paraRanges[i].beg;
         int kend = paraRanges[i].end;
-        // #pragma ivdep
+#pragma vector aligned
+#pragma ivdep
         for (int k = kbeg; k < kend; ++k) {
           int j = columns[k];
           xc += values[k] * glo_x[j];
@@ -313,7 +311,8 @@ static __attribute__((hot)) void workload(const su_t *__restrict pFU,
         double xc = tempx[basei - i];
         int kbeg = seqRanges[i].beg;
         int kend = seqRanges[i].end;
-        // #pragma ivdep
+#pragma vector aligned
+#pragma ivdep
         for (int k = kbeg; k < kend; ++k) {
           int j = columns[k];
           xc += values[k] * tempx[basei - j];
@@ -355,7 +354,7 @@ static void finalize_task(su_t *U) {
 // 输出参数:          // 右端项x，维数为pU的维数（解向量）
 // 其    他:          // 不会影响U阵中矩阵的任何信息,created by xdc 2014/6/16
 
-void LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double *b,
+void __attribute__((hot)) LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double *b,
                      aligned_double *x) {
   // int iDim;
   // int *rs_u, *j_u;
@@ -374,22 +373,22 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double *b,
   // b[i] -= i + 1;
   // x[i] = b[i];
   // }
-  memcpy(x, b, (iDim + 1) * 8);
+  // memcpy(x, b, (iDim + 1) * 8);
 
-  for (int i = 1; i <= iDim; i++) {
-    double xc = x[i];
-    int ks = rs_u[i];
-    int ke = rs_u[i + 1];
+  // for (int i = 1; i <= iDim; i++) {
+  //   double xc = x[i];
+  //   int ks = rs_u[i];
+  //   int ke = rs_u[i + 1];
 
-    for (int k = ks; k < ke; k++) {
-      int j = j_u[k];
-      x[j] -= u_u[k] * xc;
-      assert(u_u[k] == u_u[k]);
-    }
-  }
+  //   for (int k = ks; k < ke; k++) {
+  //     int j = j_u[k];
+  //     x[j] -= u_u[k] * xc;
+  //     assert(u_u[k] == u_u[k]);
+  //   }
+  // }
 
-  for (int i = 1; i <= iDim; i++)
-    x[i] /= d_u[i];
+  // for (int i = 1; i <= iDim; i++)
+  //   x[i] /= d_u[i];
 
   // for (int i = iDim - 1; i >= 1; i--) {
   //   int ks = rs_u[i];
@@ -403,40 +402,46 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double *b,
   //   x[i] = xc;
   // }
 
-  // glo_x = x;
-  // glo_b = b;
-  // // count[0] = iDim;
-  // // count[1] = iDim;
-  // barrierhead[0].Wait();
-  // barrierhead[1].Wait();
+  glo_x = x;
+  glo_b = b;
+  // count[0] = iDim;
+  // count[1] = iDim;
+  barrierhead[0].Wait();
+  barrierhead[1].Wait();
 
-  double tempx[BLOCK + 1];
-  for (int basei = iDim; basei > 0; basei -= BLOCK) {
-    int iend = std::max(basei - BLOCK, 0);
-    // this loop is ready for parallel
-    for (int i = basei; i > iend; i--) {
-      double xc = x[i];
-      int kbeg = paraRanges[i].beg;
-      int kend = paraRanges[i].end;
-      for (int k = kbeg; k < kend; ++k) {
-        int j = columns[k];
-        xc += values[k] * x[j];
-      }
-      tempx[basei - i] = xc;
-    }
-    // barrier
-    // this loop is ready for parallel
-    for (int i = basei; i > iend; i--) {
-      double xc = tempx[basei - i];
-      int kbeg = seqRanges[i].beg;
-      int kend = seqRanges[i].end;
-      for (int k = kbeg; k < kend; ++k) {
-        int j = columns[k];
-        xc += values[k] * tempx[basei - j];
-      }
-      x[i] = xc;
-    }
-  }
+//   double tempx[BLOCK + 1];
+//   for (int basei = iDim; basei > 0; basei -= BLOCK) {
+//     int iend = std::max(basei - BLOCK, 0);
+//     // this loop is ready for parallel
+//     for (int i = basei; i > iend; i--) {
+//       double xc = x[i];
+//       int kbeg = paraRanges[i].beg;
+//       int kend = paraRanges[i].end;
+// // #pragma simd vectorlength(8), reduction(+ : xc)
+// #pragma vector aligned
+// #pragma ivdep
+//       for (int k = kbeg; k < kend; ++k) {
+//         int j = columns[k];
+//         xc += values[k] * x[j];
+//       }
+//       tempx[basei - i] = xc;
+//     }
+//     // barrier
+//     // this loop is ready for parallel
+//     for (int i = basei; i > iend; i--) {
+//       double xc = tempx[basei - i];
+//       int kbeg = seqRanges[i].beg;
+//       int kend = seqRanges[i].end;
+// // #pragma simd vectorlength(8), reduction(+:xc)
+// #pragma vector aligned
+// #pragma ivdep
+//       for (int k = kbeg; k < kend; ++k) {
+//         int j = columns[k];
+//         xc += values[k] * tempx[basei - j];
+//       }
+//       x[i] = xc;
+//     }
+//   }
 }
 
 // 描    述:
@@ -473,6 +478,5 @@ void deallocate_UMatReal(SprsUMatRealStru *U) {
   initMem_UMatReal(U);
   finalize_task(U);
 }
-
 
 // #pragma float_control(pop)
