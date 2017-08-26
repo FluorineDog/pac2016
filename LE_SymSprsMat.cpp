@@ -29,6 +29,13 @@
 
 int **UT_group, **U_group, **U_child, **UT_child;
 int *U_index, *UT_index;
+double **UT, **U;
+int **UT_ein, **U_ein;
+
+int **UT_line, **U_line;
+double **UT_ele, **U_ele;
+int **UT_elein, **U_elein;
+
 int block_size;
 
 //////////////////////////////////////////////////////////////////////
@@ -623,6 +630,11 @@ void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
     U_group = (int **)calloc(iDim + 1, sizeof(int *));
     UT_group = (int **)calloc(iDim + 1, sizeof(int *));
 
+    UT = (double **)calloc(iDim + 1, sizeof(double *));
+    U = (double **)calloc(iDim + 1, sizeof(double *));
+    UT_ein = (int **)calloc(iDim + 1, sizeof(double *));
+    U_ein = (int **)calloc(iDim + 1, sizeof(double *));
+
     for(i=0; i <= iDim; ++i){
         UT_child[i] = (int *)calloc(iDim + 1, sizeof(int));
         U_child[i] = (int *)calloc(iDim + 1, sizeof(int));
@@ -633,16 +645,27 @@ void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
         U_group[i][0] = 1;
         UT_group[i] = (int *)calloc(iDim + 1, sizeof(int));
         UT_group[i][0] = 1;
+
+        U[i] = (double *)calloc(iDim + 1, sizeof(double));
+        memset(U[i], 0, sizeof(double) * (iDim + 1));
+        UT[i] = (double *)calloc(iDim + 1, sizeof(double));
+        memset(UT[i], 0, sizeof(double) * (iDim + 1));
+
+        U_ein[i] = (int *)calloc(iDim + 1, sizeof(int)* (iDim + 1));
+        U_ein[i][0] = 1;
+        UT_ein[i] = (int *)calloc(iDim + 1, sizeof(int)* (iDim + 1));
+        UT_ein[i][0] = 1;
     }
 
 
-    // scan childern (nodes who depend on this node)
+    // scan children(nodes who depend on this node), and record value
     for(i = 1; i <= iDim; ++i){
         kn = rs_u[i];
         kp = rs_u[i + 1];
         for(k = kn; k < kp; ++k){
             UT_child[i][UT_child[i][0]] = j_u[k];
             UT_child[i][0] ++;
+            UT[j_u[k]][i] = u_u[k];
         }
     }
 
@@ -651,6 +674,26 @@ void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
     //    printf("%d: ", i);
     //    for(j=1; j < UT_child[i][0]; ++j)
     //        printf("%d ", UT_child[i][j]);
+    //    putchar('\n');
+    //}
+    //exit(0);
+
+    // remove zeros from UT, UT_ein
+    for(i = 1; i<=iDim; ++i){
+        for(j = 1; j < i; ++j){
+            if(UT[i][j] != 0.0){
+                UT[i][UT_ein[i][0]] = UT[i][j];
+                UT_ein[i][UT_ein[i][0]] = j;
+                UT_ein[i][0]++;
+            }
+        }
+    }
+
+    // <!-- debug -->
+    //for(i=1; i<=iDim; ++i){
+    //    printf("%4d, %4d: ", i, UT_ein[i][0]);
+    //    for(k=1; k<UT_ein[i][0]; ++k)
+    //        printf("%15le %4d ", UT[i][k], UT_ein[i][k]);
     //    putchar('\n');
     //}
     //exit(0);
@@ -687,19 +730,64 @@ void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
     //    printf("%d: %d \n", i, UT_index[i]);
     //exit(0);
 
+    // groupify
     for(i=1; i <= iDim; ++i){
         UT_group[UT_index[i]][UT_group[UT_index[i]][0]] = i;
         UT_group[UT_index[i]][0] ++;
     }
 
     // <!-- debug -->
-    for(i=1; i <= iDim; ++i){
-        printf("%d: ", i);
-        for(j=1; j < UT_group[i][0]; ++j)
-            printf("%d ", UT_group[i][j]);
-        putchar('\n');
-    }
-    exit(0);
+    //for(i=1; i <= iDim; ++i){
+    //    printf("%d: ", i);
+    //    for(j=1; j < UT_group[i][0]; ++j)
+    //        printf("%d ", UT_group[i][j]);
+    //    putchar('\n');
+    //}
+    //exit(0);
+
+
+    //// seralize
+    //for(i = 1; i <= iDim && UT_group[i][0] != 1; ++i);
+    //UT_line = (int **)calloc(i, sizeof(int *));
+    //UT_ele  = (double **)calloc(i, sizeof(double *));
+    //UT_elein = (int **)calloc(i, sizeof(double *));
+
+    //// the group index
+    //for(i = 1; i <= iDim && UT_group[i][0] != 1; ++i){
+    //    // alloc space
+    //    n = 0;
+    //    for(j = 1; j < UT_group[i][0]; ++j)
+    //        n += UT_ein[UT_group[i][j]][0];
+    //    UT_line[i] = (int *)calloc(n, sizeof(int));
+    //    UT_ele[i] = (double *)calloc(n, sizeof(double));
+    //    UT_elein[i] = (int *)calloc(n, sizeof(int));
+    //    UT_line[i][0] = 1;
+
+    //    // the index in a group, write vals
+    //    for(j = 1; j < UT_group[i][0]; ++j){
+    //        // the line in UT_group
+    //        m = UT_group[i][j];
+    //        for(k = 1; k < UT_ein[m][0]; ++k){
+    //            UT_line[i][UT_line[i][0]] = m;
+    //            UT_ele[i][UT_line[i][0]] = UT[m][k];
+    //            UT_elein[i][UT_line[i][0]] = UT_ein[m][k];
+    //            UT_line[i][0] ++;
+    //        }
+    //    }
+    //}
+
+    // <!-- debug -->
+    //for(i = 1; UT_group[i][0] != 1; ++i){
+    //    printf("%4d: ", i);
+    //    for(j = 1; j < UT_line[i][0]; ++j){
+    //        printf("%4d %15le %4d  ", UT_line[i][j], UT_ele[i][j], UT_elein[i][j]);
+    //    }
+    //    putchar('\n');
+    //}
+    //exit(0);
+
+    // the number of cores - 1or2
+    omp_set_num_threads(3);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -744,6 +832,45 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU,double b[],double x[])
     #pragma omp parallel for private(i) shared(x, b)
     for(i = 1; i <= iDim; i++)  // x <- b
         x[i] = b[i];
+
+    // ->> modified, not-seralize
+    int line, lineElNum;
+    for(i = 1; i <= iDim && UT_group[i][0] != 1; ++i){
+        if(UT_group[i][0] >=5){
+            #pragma omp parallel for private(line, lineElNum, k, xc) shared(UT_group, UT_ein, UT)
+            for(j = 1; j < UT_group[i][0]; ++j){
+                line = UT_group[i][j];
+                lineElNum = UT_ein[line][0];
+                xc = x[line];
+                for(k = 1; k < lineElNum; ++k){
+                    xc -= UT[line][k] * x[UT_ein[line][k]];
+                }
+                x[line] = xc;
+            }
+        } else {
+            for(j = 1; j < UT_group[i][0]; ++j){
+                line = UT_group[i][j];
+                lineElNum = UT_ein[line][0];
+                xc = x[line];
+                for(k = 1; k < lineElNum; ++k){
+                    xc -= UT[line][k] * x[UT_ein[line][k]];
+                }
+                x[line] = xc;
+            }
+        }
+    }
+
+    static int temp=0;
+    printf("%d\n", temp);
+    temp++;
+
+    //// ->> modified, serialize
+    //for(i = 1; UT_group[i][0] != 1; ++i){
+    //    //#pragma omp parallel for private(j) shared(UT_line, UT_ele, UT_elein, i)
+    //    for(j = 1; j < UT_line[i][0]; ++j){
+    //        x[UT_line[i][j]] -= UT_ele[i][j] * x[UT_elein[i][j]];
+    //    }
+    //}
 
     //// ->> original
     //for(i = 1; i <= iDim; i++)
