@@ -197,10 +197,14 @@ public:
     lock[3][id ^ 0x8] = 0;
     // lock[4][id ^ 0x10] = 0;
     // lock[5][id ^ 0x20] = 0;
-    while (lock[0][id]);
-    while (lock[1][id]);
-    while (lock[2][id]);
-    while (lock[3][id]);
+    while (lock[0][id])
+      ;
+    while (lock[1][id])
+      ;
+    while (lock[2][id])
+      ;
+    while (lock[3][id])
+      ;
     // while(lock[4][id]);
     // while(lock[5][id]);
     lock[0][id] = 1;
@@ -250,18 +254,18 @@ protected:
   // std::atomic<unsigned int> step_;
   volatile unsigned int step_;
 };
-static Barrier<THREAD_NUM + 1> barrierhead[2];
+// static Barrier<THREAD_NUM + 1> barrierhead[2];
 // static Barrier<THREAD_NUM> barrier[50];
 // static Barrier<THREAD_NUM> barrier[2];
-static dogBarrier barrier[2];
+static dogBarrier barrier[3];
 
 static std::vector<std::thread> threads;
 // static std::atomic<int> glo_id[2];
 static std::atomic<bool> die;
-static aligned_double * __restrict__ glo_b;
-static aligned_double * __restrict__ glo_x;
+static aligned_double *glo_b;
+static aligned_double *glo_x;
 
-static aligned_double * __restrict__ tempx;
+static aligned_double *tempx;
 
 // static std::atomic<int> count[2];
 static __attribute__((hot)) void workload(const su_t *__restrict pFU,
@@ -276,7 +280,9 @@ static __attribute__((hot)) void workload(const su_t *__restrict pFU,
   const auto columns = pFU->dogUMat.columns;
   const auto values = pFU->values;
   while (true) {
-    barrierhead[0].Wait();
+    cerr << "damn";
+    barrier[2].Wait(private_id);
+    cerr << "die";
     if (die) {
       return;
     }
@@ -293,7 +299,6 @@ static __attribute__((hot)) void workload(const su_t *__restrict pFU,
         int kend = paraRanges[i].end;
 #pragma vector aligned
 #pragma ivdep
-#pragma simd vectorlength(16)
         for (int k = kbeg; k < kend; ++k) {
           int j = columns[k];
           xc += values[k] * glo_x[j];
@@ -313,7 +318,6 @@ static __attribute__((hot)) void workload(const su_t *__restrict pFU,
         int kend = seqRanges[i].end;
 #pragma vector aligned
 #pragma ivdep
-#pragma simd vectorlength(16)
         for (int k = kbeg; k < kend; ++k) {
           int j = columns[k];
           xc += values[k] * tempx[basei - j];
@@ -324,13 +328,14 @@ static __attribute__((hot)) void workload(const su_t *__restrict pFU,
       }
       barrier[1].Wait(private_id);
     }
-    barrierhead[1].Wait();
+    // barrierhead[1].Wait();
   }
 }
 
 static void dog_init_task(su_t *U) {
   die.store(false);
-  for (int i = 0; i < THREAD_NUM; ++i) {
+  // 1 is for master mode
+  for (int i = 1; i < THREAD_NUM; ++i) {
     auto th = std::thread(workload, U, i);
     threads.push_back(std::move(th));
   }
@@ -340,7 +345,7 @@ static void dog_init_task(su_t *U) {
 static void finalize_task(su_t *U) {
   die = true;
   if (threads.size()) {
-    barrierhead[0].Wait();
+    barrier[2].Wait(0);
   }
   for (auto &th : threads) {
     cerr << "recyclcing" << endl;
@@ -361,10 +366,10 @@ LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double *b, aligned_double *x) {
   // int iDim;
   // int *rs_u, *j_u;
   // double *d_u, *u_u;
-  double *d_u = pFU->d_u;
-  double *u_u = pFU->u_u;
-  int *rs_u = pFU->uMax.rs_u;
-  int *j_u = pFU->uMax.j_u;
+  // double *d_u = pFU->d_u;
+  // double *u_u = pFU->u_u;
+  // int *rs_u = pFU->uMax.rs_u;
+  // int *j_u = pFU->uMax.j_u;
   int iDim = pFU->uMax.iDim;
   auto paraRanges = pFU->dogUMat.paraRanges;
   auto seqRanges = pFU->dogUMat.SeqRanges;
@@ -375,7 +380,7 @@ LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double *b, aligned_double *x) {
   // b[i] -= i + 1;
   // x[i] = b[i];
   // }
-  // memcpy(x, b, (iDim + 1) * 8);
+  memcpy(x, b, (iDim + 1) * 8);
 
   // for (int i = 1; i <= iDim; i++) {
   //   double xc = x[i];
@@ -408,8 +413,57 @@ LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double *b, aligned_double *x) {
   glo_b = b;
   // count[0] = iDim;
   // count[1] = iDim;
-  barrierhead[0].Wait();
-  barrierhead[1].Wait();
+  // barrierhead[0].Wait();
+  // barrierhead[1].Wait();
+  // cerr << "fuck";
+  constexpr int private_id = 0;
+  cerr << "fuck";
+  // while (true) {
+  barrier[2].Wait(private_id);
+  int ia = iDim - private_id;
+  int ib = iDim - private_id;
+  for (int basei = iDim; basei > 0; basei -= BLOCK) {
+    int iend = std::max(basei - BLOCK, 0);
+    // this loop is ready for parallel
+    // for (int i = basei; i > iend; i--)
+    while (ia > iend) {
+      int i = ia;
+      double xc = glo_x[i];
+      int kbeg = paraRanges[i].beg;
+      int kend = paraRanges[i].end;
+#pragma vector aligned
+#pragma ivdep
+      for (int k = kbeg; k < kend; ++k) {
+        int j = columns[k];
+        xc += values[k] * glo_x[j];
+      }
+      tempx[basei - i] = xc;
+      // ia = glo_id[0].fetch_sub(1);
+      ia -= THREAD_NUM;
+    }
+    // // barrier
+    barrier[0].Wait(private_id);
+    // this loop is ready for parallel
+    // for (int i = basei; i > iend; i--) {
+    while (ib > iend) {
+      int i = ib;
+      double xc = tempx[basei - i];
+      int kbeg = seqRanges[i].beg;
+      int kend = seqRanges[i].end;
+#pragma vector aligned
+#pragma ivdep
+      for (int k = kbeg; k < kend; ++k) {
+        int j = columns[k];
+        xc += values[k] * tempx[basei - j];
+      }
+      glo_x[i] = xc;
+      // ib = glo_id[1].fetch_sub(1);
+      ib -= THREAD_NUM;
+    }
+    barrier[1].Wait(private_id);
+  }
+  // barrierhead[1].Wait();
+  // }
 
   //   double tempx[BLOCK + 1];
   //   for (int basei = iDim; basei > 0; basei -= BLOCK) {
