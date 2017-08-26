@@ -8,7 +8,6 @@
 #include <mutex>
 #include <pthread.h>
 #include <thread>
-
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -19,11 +18,13 @@ using std::endl;
 #include <vector>
 
 typedef double __attribute((aligned(64))) aligned_double;
-constexpr int BLOCK = 512;
-constexpr int THREAD_NUM = 4; // magic !! don't modify !!
+constexpr int BLOCK = 1100;
+constexpr int THREAD_NUM = 16; // magic !! don't modify !!
 using su_t = SprsUMatRealStru;
 #define dog_calloc(size, type)                                                 \
   (type *)aligned_alloc(64, ((size) * sizeof(type) + 63) & ~63);
+
+#define dog_free(ptr) free(ptr);
 
 // 描    述:          // 稀疏实数向量内存初始化。数目、指针变量置零
 void initMem_VecReal(VecRealStru *V) {
@@ -47,7 +48,7 @@ void allocate_VecReal(VecRealStru *V) {
 // 被deallocateNet()调用
 void deallocate_VecReal(VecRealStru *V) {
   // 指针变量内存释放
-  free(V->pdVal);
+  dog_free(V->pdVal);
 }
 void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
   int *rs_u = pFU->uMax.rs_u;
@@ -88,10 +89,10 @@ void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
   }
   pFU->dogUMat.iDim = iDim;
   pFU->dogUMat.alloc_size = lines_sum * 8;
-  free(pFU->dogUMat.columns);
-  free(pFU->dogUMat.SeqRanges);
-  free(pFU->dogUMat.paraRanges);
-  free(pFU->values);
+  dog_free(pFU->dogUMat.columns);
+  dog_free(pFU->dogUMat.SeqRanges);
+  dog_free(pFU->dogUMat.paraRanges);
+  dog_free(pFU->values);
 
   pFU->dogUMat.SeqRanges = dog_calloc(iDim + 1, pair_ii_t);
   pFU->dogUMat.paraRanges = dog_calloc(iDim + 1, pair_ii_t);
@@ -173,13 +174,13 @@ void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {
   dog_init_task(pFU);
 }
 
+#pragma float_control(fast, on, push)
 using std::unique_lock;
 using std::lock_guard;
 
-// #pragma float_control(fast, on, push)
 class dogBarrier {
 public:
-  static constexpr int barrier_thread = 8;
+  static constexpr int barrier_thread = 16;
   dogBarrier() {
     assert(!THREAD_NUM || THREAD_NUM == barrier_thread);
     for (auto &line : lock) {
@@ -193,28 +194,26 @@ public:
     lock[0][id ^ 0x1] = 0;
     lock[1][id ^ 0x2] = 0;
     lock[2][id ^ 0x4] = 0;
-    // lock[3][id ^ 0x8] = 0;
+    lock[3][id ^ 0x8] = 0;
     // lock[4][id ^ 0x10] = 0;
     // lock[5][id ^ 0x20] = 0;
-    while (lock[0][id])
-      ;
-    while (lock[1][id])
-      ;
+    while (lock[0][id]);
+    while (lock[1][id]);
     while (lock[2][id]);
-    // while (lock[3][id]);
+    while (lock[3][id]);
     // while(lock[4][id]);
     // while(lock[5][id]);
     lock[0][id] = 1;
     lock[1][id] = 1;
     lock[2][id] = 1;
-    // lock[3][id] = 1;
+    lock[3][id] = 1;
     // lock[4][id] = 1;
     // lock[5][id] = 1;
   }
 
 protected:
   // volatile int lock[3][8];
-  volatile int lock[3][THREAD_NUM]; // barrier_thread
+  volatile int lock[4][THREAD_NUM]; // barrier_thread
   // volatile int lock[2][THREAD_NUM]; // barrier_thread
   // volatile int lock[6][64];
 };
@@ -262,7 +261,7 @@ static std::atomic<bool> die;
 static aligned_double *glo_b;
 static aligned_double *glo_x;
 
-static double tempx[BLOCK + 1];
+static aligned_double *tempx;
 
 // static std::atomic<int> count[2];
 static __attribute__((hot)) void workload(const su_t *__restrict pFU,
@@ -333,6 +332,7 @@ static void dog_init_task(su_t *U) {
     auto th = std::thread(workload, U, i);
     threads.push_back(std::move(th));
   }
+  tempx = dog_calloc(U->dogUMat.iDim + 1, double);
 }
 
 static void finalize_task(su_t *U) {
@@ -354,8 +354,8 @@ static void finalize_task(su_t *U) {
 // 输出参数:          // 右端项x，维数为pU的维数（解向量）
 // 其    他:          // 不会影响U阵中矩阵的任何信息,created by xdc 2014/6/16
 
-void __attribute__((hot)) LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double *b,
-                     aligned_double *x) {
+void __attribute__((hot))
+LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double *b, aligned_double *x) {
   // int iDim;
   // int *rs_u, *j_u;
   // double *d_u, *u_u;
@@ -409,39 +409,39 @@ void __attribute__((hot)) LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double 
   barrierhead[0].Wait();
   barrierhead[1].Wait();
 
-//   double tempx[BLOCK + 1];
-//   for (int basei = iDim; basei > 0; basei -= BLOCK) {
-//     int iend = std::max(basei - BLOCK, 0);
-//     // this loop is ready for parallel
-//     for (int i = basei; i > iend; i--) {
-//       double xc = x[i];
-//       int kbeg = paraRanges[i].beg;
-//       int kend = paraRanges[i].end;
-// // #pragma simd vectorlength(8), reduction(+ : xc)
-// #pragma vector aligned
-// #pragma ivdep
-//       for (int k = kbeg; k < kend; ++k) {
-//         int j = columns[k];
-//         xc += values[k] * x[j];
-//       }
-//       tempx[basei - i] = xc;
-//     }
-//     // barrier
-//     // this loop is ready for parallel
-//     for (int i = basei; i > iend; i--) {
-//       double xc = tempx[basei - i];
-//       int kbeg = seqRanges[i].beg;
-//       int kend = seqRanges[i].end;
-// // #pragma simd vectorlength(8), reduction(+:xc)
-// #pragma vector aligned
-// #pragma ivdep
-//       for (int k = kbeg; k < kend; ++k) {
-//         int j = columns[k];
-//         xc += values[k] * tempx[basei - j];
-//       }
-//       x[i] = xc;
-//     }
-//   }
+  //   double tempx[BLOCK + 1];
+  //   for (int basei = iDim; basei > 0; basei -= BLOCK) {
+  //     int iend = std::max(basei - BLOCK, 0);
+  //     // this loop is ready for parallel
+  //     for (int i = basei; i > iend; i--) {
+  //       double xc = x[i];
+  //       int kbeg = paraRanges[i].beg;
+  //       int kend = paraRanges[i].end;
+  // // #pragma simd vectorlength(8), reduction(+ : xc)
+  // #pragma vector aligned
+  // #pragma ivdep
+  //       for (int k = kbeg; k < kend; ++k) {
+  //         int j = columns[k];
+  //         xc += values[k] * x[j];
+  //       }
+  //       tempx[basei - i] = xc;
+  //     }
+  //     // barrier
+  //     // this loop is ready for parallel
+  //     for (int i = basei; i > iend; i--) {
+  //       double xc = tempx[basei - i];
+  //       int kbeg = seqRanges[i].beg;
+  //       int kend = seqRanges[i].end;
+  // // #pragma simd vectorlength(8), reduction(+:xc)
+  // #pragma vector aligned
+  // #pragma ivdep
+  //       for (int k = kbeg; k < kend; ++k) {
+  //         int j = columns[k];
+  //         xc += values[k] * tempx[basei - j];
+  //       }
+  //       x[i] = xc;
+  //     }
+  //   }
 }
 
 // 描    述:
@@ -475,8 +475,12 @@ void deallocate_UMatReal(SprsUMatRealStru *U) {
   free(U->uMax.rs_u);
   free(U->uMax.r_u);
   free(U->uMax.j_u);
+  dog_free(U->dogUMat.columns);
+  dog_free(U->dogUMat.SeqRanges);
+  dog_free(U->dogUMat.paraRanges);
+  dog_free(U->values);
   initMem_UMatReal(U);
   finalize_task(U);
 }
 
-// #pragma float_control(pop)
+#pragma float_control(pop)
