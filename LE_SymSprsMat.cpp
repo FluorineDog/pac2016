@@ -8,6 +8,7 @@
 #include <mutex>
 #include <pthread.h>
 #include <thread>
+// #include <hbwmalloc.h>
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -21,6 +22,14 @@ typedef double __attribute((aligned(64))) aligned_double;
 constexpr int BLOCK = 1100;
 constexpr int THREAD_NUM = 16; // magic !! don't modify !!
 using su_t = SprsUMatRealStru;
+// 
+// inline void* __attribute((malloc)) dog_calloc_sub_(const int alignment,  size_t size){
+  // size = (size+63)&~63;
+  // void* ptr;
+  // int ret = hbw_posix_memalign(&ptr, alignment, size);
+  // return ptr;
+// }
+
 #define dog_calloc(size, type)                                                 \
   (type *)aligned_alloc(64, ((size) * sizeof(type) + 63) & ~63);
 
@@ -371,26 +380,25 @@ LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double *b, aligned_double *x) {
   auto columns = pFU->dogUMat.columns;
   auto values = pFU->values;
 
-  // for (int i = 1; i <= iDim; i++) {
-  // b[i] -= i + 1;
-  // x[i] = b[i];
-  // }
   // memcpy(x, b, (iDim + 1) * 8);
+  for(int i = 0; i < iDim+1; ++i){
+    x[i] = b[i];
+  }
 
-  // for (int i = 1; i <= iDim; i++) {
-  //   double xc = x[i];
-  //   int ks = rs_u[i];
-  //   int ke = rs_u[i + 1];
+  for (int i = 1; i <= iDim; i++) {
+    double xc = x[i];
+    int ks = rs_u[i];
+    int ke = rs_u[i + 1];
 
-  //   for (int k = ks; k < ke; k++) {
-  //     int j = j_u[k];
-  //     x[j] -= u_u[k] * xc;
-  //     assert(u_u[k] == u_u[k]);
-  //   }
-  // }
+    for (int k = ks; k < ke; k++) {
+      int j = j_u[k];
+      x[j] -= u_u[k] * xc;
+      assert(u_u[k] == u_u[k]);
+    }
+  }
 
-  // for (int i = 1; i <= iDim; i++)
-  //   x[i] /= d_u[i];
+  for (int i = 1; i <= iDim; i++)
+    x[i] /= d_u[i];
 
   // for (int i = iDim - 1; i >= 1; i--) {
   //   int ks = rs_u[i];
