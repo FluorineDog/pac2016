@@ -1,0 +1,16 @@
+*.o
+test1
+temp/*
+temp
+tmp/*
+UT
+debug_*
+*.dat
+perf/*
+*.txt
+perf/*
+!CMakeLists.txt
+*.optrpt
+.vscode/*
+build
+build/*
