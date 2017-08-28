@@ -1,5 +1,3 @@
-constexpr int BLOCK = 1100;
-constexpr int THREAD_NUM = 16; // magic !! don't modify !!
 #include "LE_SymSprsMatInit.h"
 #pragma float_control(fast, on, push)
 
