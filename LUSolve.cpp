@@ -497,7 +497,7 @@ int main(int argc, char* argv[])
 
     for(i=0; i<nsize; i++)
     {
-        for(j=0;j<5;j++)
+        for(j=0;j<10;j++)
         {
             LE_FBackwardSym(&U,B[i].pdVal,X[i].pdVal);
         }

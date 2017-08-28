@@ -16,10 +16,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
+#include<stdlib.h>
 #include "omp.h"
 
 #include "LE_SymSprsMatFunc.h"
 #include "LE_SymSprsMatDef.h"
+
+double **UT_trans, **U_trans;
+int **UT_trans_in, **U_trans_in;
+double *tempX;
 
 //////////////////////////////////////////////////////////////////////
 // º¯ Êý Ãû:          // initMem_MatReal
@@ -576,6 +582,10 @@ void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
         d_u[i] = dk;
     }
 
+
+    /// ------------------------>> addition by Sixu Hu
+
+    /// 1. remove zeros
     //printf("%d\n", pFU->uMax.iNzs);
     j = 0;                          // the new array counter
     p = rs_u[1];                    // init rs_u[n+1]
@@ -593,6 +603,97 @@ void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
         p = rs_u[i + 1];            // store rs_u[i+1] -> p
         rs_u[i + 1] = j;
     }
+
+    /// 2. get UT^-1
+    UT_trans = (double **)calloc(iDim + 1, sizeof(double *));
+    UT_trans_in = (int **)calloc(iDim + 1, sizeof(int *));
+    for(int i=0; i<iDim + 1; ++i){
+        UT_trans[i] = (double *)calloc(iDim + 1, sizeof(double));
+        memset(UT_trans[i], 0, sizeof(double) * (iDim + 1));
+
+        UT_trans_in[i] = (int *)calloc(iDim + 1, sizeof(int));
+    }
+
+    for(i=1; i<=iDim; ++i){
+        kn = rs_u[i];
+        kp = rs_u[i+1];
+        for(k = kn; k < kp; ++k){
+            for(j = 1; j < i; ++j){
+                if(UT_trans[i][j] != 0.0)
+                    UT_trans[j_u[k]][j] -= u_u[k] * UT_trans[i][j];
+            }
+            UT_trans[j_u[k]][i] = -u_u[k];
+        }
+    }
+
+    // remove zeros
+    for(int i=1; i <= iDim; ++i){
+        j = 1;
+        for(k = 1; k <= i; ++k){
+            if(UT_trans[i][k] != 0.0){
+                UT_trans[i][j] = UT_trans[i][k];
+                UT_trans_in[i][j] = k;
+                j++;
+            }
+        }
+        UT_trans_in[i][j] = 0;
+    }
+
+    //// <!-- debug -->
+    //for(i = 1; i <= iDim; ++i){
+    //    printf("%4d: ", i);
+    //    for(j = 1; UT_trans_in[i][j] != 0; ++j)
+    //        printf("%15le %d  ", UT_trans[i][j], UT_trans_in[i][j]);
+    //    putchar('\n');
+    //}
+    //exit(0);
+
+    /// 3. get U^-1
+    U_trans = (double **)calloc(iDim + 1, sizeof(double *));
+    U_trans_in = (int **)calloc(iDim + 1, sizeof(int *));
+    for(int i=0; i<iDim + 1; ++i){
+        U_trans[i] = (double *)calloc(iDim + 1, sizeof(double));
+        memset(U_trans[i], 0, sizeof(double) * (iDim + 1));
+
+        U_trans_in[i] = (int *)calloc(iDim + 1, sizeof(int));
+    }
+
+    for(i = iDim; i >= 1; --i){
+        kn = rs_u[i];
+        kp = rs_u[i+1];
+        for(k = kp - 1; k >= kn; --k){
+            for(j = j_u[k] + 1; j <= iDim; ++j){
+                if(U_trans[j_u[k]][j] != 0.0)
+                    U_trans[i][j] -= u_u[k] * U_trans[j_u[k]][j];
+            }
+            U_trans[i][j_u[k]] = -u_u[k];
+        }
+    }
+
+    // remove zeros
+    for(int i=1; i <= iDim; ++i){
+        j = 1;
+        for(k = i; k <= iDim; ++k){
+            if(U_trans[i][k] != 0.0){
+                U_trans[i][j] = U_trans[i][k];
+                U_trans_in[i][j] = k;
+                j++;
+            }
+        }
+        U_trans_in[i][j] = 0;
+    }
+
+    // <!-- debug -->
+    //for(i = 1; i <= iDim; ++i){
+    //    printf("%4d: ", i);
+    //    for(j = 1; U_trans_in[i][j] != 0; ++j)
+    //        printf("%15le %d  ", U_trans[i][j], U_trans_in[i][j]);
+    //    putchar('\n');
+    //}
+    //exit(0);
+
+    tempX = (double *)calloc(iDim + 1, sizeof(double));
+    //omp_set_num_threads(3);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -632,35 +733,61 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU,double b[],double x[])
     for(i = 1; i <= iDim; i++)  // x <- b
         x[i] = b[i];
 
-    for(i = 1; i <= iDim; i++)  //
-    {
-        xc = x[i];
-        ks = rs_u[i];
-        ke = rs_u[i+1];
+    //static int temp = 0;
+    //printf("%d\n", temp);
+    //temp ++;
 
-        for(k = ks; k < ke; k ++)
-        {
-            x[j_u[k]] -= u_u[k] * xc;
+    // ->> modified
+    #pragma omp parallel for private(i, j) shared(UT_trans, UT_trans_in, x, b) schedule(dynamic, 3)
+    for(i = 1; i <= iDim; ++i){
+        for(j = 1; UT_trans_in[i][j] != 0; ++j){
+            x[i] += UT_trans[i][j] * b[UT_trans_in[i][j]];
         }
     }
+
+    //// ->> original
+    //for(i = 1; i <= iDim; i++)  //
+    //{
+    //    xc = x[i];
+    //    ks = rs_u[i];
+    //    ke = rs_u[i+1];
+
+    //    for(k = ks; k < ke; k ++)
+    //    {
+    //        x[j_u[k]] -= u_u[k] * xc;
+    //    }
+    //}
 
     #pragma omp parallel for private(i) shared(x, d_u)
     for(i=1; i<=iDim; i++)
         x[i] /= d_u[i];
 
-    for(i=iDim-1; i>=1; i--)
-    {
-        ks = rs_u[i];
-        ke = rs_u[i+1] - 1;
-        xc = x[i];
 
-        //#pragma omp parallel for reduction(-:xc) private(k) shared(u_u, j_u, x)
-        for(k=ke; k>=ks; k--)
-        {
-            xc -= u_u[k] * x[j_u[k]];
+    // ->> modified
+    #pragma omp parallel for private(i) shared(x, b)
+    for(i = 1; i <= iDim; i++)  // b <- x
+        tempX[i] = x[i];
+
+    #pragma omp parallel for private(i, j) shared(U_trans, U_trans_in, x, b) schedule(dynamic, 3)
+    for(i = iDim; i >= 1; --i){
+        for(j = 1; U_trans_in[i][j] != 0; ++j){
+            x[i] += U_trans[i][j] * tempX[U_trans_in[i][j]];
         }
-        x[i] = xc;
     }
+
+    // ->> original
+    //for(i=iDim-1; i>=1; i--)
+    //{
+    //    ks = rs_u[i];
+    //    ke = rs_u[i+1] - 1;
+    //    xc = x[i];
+
+    //    for(k=ke; k>=ks; k--)
+    //    {
+    //        xc -= u_u[k] * x[j_u[k]];
+    //    }
+    //    x[i] = xc;
+    //}
 }
 
 
