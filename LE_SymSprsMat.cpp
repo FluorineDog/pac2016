@@ -6,10 +6,10 @@ static Barrier<THREAD_NUM> barrier[2];
 
 static std::vector<std::thread> threads;
 static std::atomic<bool> die;
-static aligned_double * __restrict__ glo_b;
-static aligned_double * __restrict__ glo_x;
+static aligned_double *__restrict__ glo_b;
+static aligned_double *__restrict__ glo_x;
 
-static aligned_double * __restrict__ tempx;
+static aligned_double *__restrict__ tempx;
 
 // static std::atomic<int> count[2];
 static __attribute__((hot)) void workload(const su_t *__restrict pFU,
@@ -119,25 +119,25 @@ LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double *b, aligned_double *x) {
   auto columns = pFU->dogUMat.columns;
   auto values = pFU->values;
 
-  // memcpy(x, b, (iDim + 1) * 8);
-  for(int i = 0; i < iDim+1; ++i){
-    x[i] = b[i];
-  }
+  // // memcpy(x, b, (iDim + 1) * 8);
+  // for (int i = 0; i < iDim + 1; ++i) {
+  //   x[i] = b[i];
+  // }
 
-  for (int i = 1; i <= iDim; i++) {
-    double xc = x[i];
-    int ks = rs_u[i];
-    int ke = rs_u[i + 1];
+  // for (int i = 1; i <= iDim; i++) {
+  //   double xc = x[i];
+  //   int ks = rs_u[i];
+  //   int ke = rs_u[i + 1];
 
-    for (int k = ks; k < ke; k++) {
-      int j = j_u[k];
-      x[j] -= u_u[k] * xc;
-      assert(u_u[k] == u_u[k]);
-    }
-  }
+  //   for (int k = ks; k < ke; k++) {
+  //     int j = j_u[k];
+  //     x[j] -= u_u[k] * xc;
+  //     assert(u_u[k] == u_u[k]);
+  //   }
+  // }
 
-  for (int i = 1; i <= iDim; i++)
-    x[i] /= d_u[i];
+  // for (int i = 1; i <= iDim; i++)
+  //   x[i] /= d_u[i];
 
   // for (int i = iDim - 1; i >= 1; i--) {
   //   int ks = rs_u[i];
@@ -151,46 +151,49 @@ LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double *b, aligned_double *x) {
   //   x[i] = xc;
   // }
 
-  glo_x = x;
-  glo_b = b;
-  // count[0] = iDim;
-  // count[1] = iDim;
-  barrierhead[0].Wait();
-  barrierhead[1].Wait();
+  // glo_x = x;
+  // glo_b = b;
+  // // count[0] = iDim;
+  // // count[1] = iDim;
+  // barrierhead[0].Wait();
+  // barrierhead[1].Wait();
 
-  //   double tempx[BLOCK + 1];
-  //   for (int basei = iDim; basei > 0; basei -= BLOCK) {
-  //     int iend = std::max(basei - BLOCK, 0);
-  //     // this loop is ready for parallel
-  //     for (int i = basei; i > iend; i--) {
-  //       double xc = x[i];
-  //       int kbeg = paraRanges[i].beg;
-  //       int kend = paraRanges[i].end;
-  // // #pragma simd vectorlength(8), reduction(+ : xc)
-  // #pragma vector aligned
-  // #pragma ivdep
-  //       for (int k = kbeg; k < kend; ++k) {
-  //         int j = columns[k];
-  //         xc += values[k] * x[j];
-  //       }
-  //       tempx[basei - i] = xc;
-  //     }
-  //     // barrier
-  //     // this loop is ready for parallel
-  //     for (int i = basei; i > iend; i--) {
-  //       double xc = tempx[basei - i];
-  //       int kbeg = seqRanges[i].beg;
-  //       int kend = seqRanges[i].end;
-  // // #pragma simd vectorlength(8), reduction(+:xc)
-  // #pragma vector aligned
-  // #pragma ivdep
-  //       for (int k = kbeg; k < kend; ++k) {
-  //         int j = columns[k];
-  //         xc += values[k] * tempx[basei - j];
-  //       }
-  //       x[i] = xc;
-  //     }
-  //   }
+
+  for (int basei = iDim; basei > 0; basei -= BLOCK) {
+    int iend = std::max(basei - BLOCK, 0);
+    // this loop is ready for parallel
+    #pragma omp parallel for firstprivate(paraRanges, columns, values, b) shared(tempx) schedule(static)
+    for (int i = basei; i > iend; i--) {
+      double xc = b[i];
+      int kbeg = paraRanges[i].beg;
+      int kend = paraRanges[i].end;
+#pragma simd vectorlength(8), reduction(+ : xc)
+#pragma vector aligned
+#pragma ivdep
+      for (int k = kbeg; k < kend; ++k) {
+        int j = columns[k];
+        xc += values[k] * b[j];
+      }
+      tempx[i] = xc;
+    }
+    // barrier
+    // this loop is ready for parallel
+    #pragma omp barrier
+    #pragma omp parallel for firstprivate(seqRanges, columns, values, tempx) shared(x) schedule(static)
+    for (int i = basei; i > iend; i--) {
+      double xc = tempx[i];
+      int kbeg = seqRanges[i].beg;
+      int kend = seqRanges[i].end;
+#pragma simd vectorlength(8), reduction(+:xc)
+#pragma vector aligned
+#pragma ivdep
+      for (int k = kbeg; k < kend; ++k) {
+        int j = columns[k];
+        xc += values[k] * tempx[j];
+      }
+      x[i] = xc;
+    }
+  }
 }
 
 // 描    述:
