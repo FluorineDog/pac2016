@@ -84,6 +84,7 @@ typedef struct {
   // dog implement
   UMat_t dogUMat;
   aligned_double *values;
+  aligned_double *rd_u;
 } SprsUMatRealStru;
 
 #endif
