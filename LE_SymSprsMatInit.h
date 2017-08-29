@@ -12,7 +12,6 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-
 #include <cassert>
 #include <map>
 #include <set>
@@ -22,12 +21,13 @@ constexpr int BLOCK = 1;
 constexpr int THREAD_NUM = 0; // magic !! don't modify !!
 typedef double __attribute((aligned(64))) aligned_double;
 using su_t = SprsUMatRealStru;
-// 
-// inline void* __attribute((malloc)) dog_calloc_sub_(const int alignment,  size_t size){
-  // size = (size+63)&~63;
-  // void* ptr;
-  // int ret = hbw_posix_memalign(&ptr, alignment, size);
-  // return ptr;
+//
+// inline void* __attribute((malloc)) dog_calloc_sub_(const int alignment,
+// size_t size){
+// size = (size+63)&~63;
+// void* ptr;
+// int ret = hbw_posix_memalign(&ptr, alignment, size);
+// return ptr;
 // }
 
 #define dog_calloc(size, type)                                                 \
@@ -102,11 +102,13 @@ void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
   dog_free(pFU->dogUMat.SeqRanges);
   dog_free(pFU->dogUMat.paraRanges);
   dog_free(pFU->values);
+  dog_free(pFU->rd_u);
 
   pFU->dogUMat.SeqRanges = dog_calloc(iDim + 1, pair_ii_t);
   pFU->dogUMat.paraRanges = dog_calloc(iDim + 1, pair_ii_t);
   pFU->dogUMat.columns = dog_calloc(lines_sum * 8, int);
   pFU->values = dog_calloc(lines_sum * 8, double);
+  pFU->rd_u = dog_calloc(iDim + 1, double);
 
   int col_index = 0;
   for (int i = iDim; i > 0; --i) {
@@ -140,6 +142,14 @@ void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {
   auto values = pFU->values;
   memset(values, 0, pFU->dogUMat.alloc_size * sizeof(double));
   auto iDim = pFU->dogUMat.iDim;
+  auto rd_u = pFU->rd_u;
+  rd_u[0] = 0;
+  for (int i = 1; i < iDim + 1; ++i) {
+    rd_u[i] = 1 / pFU->d_u[i];
+  }
+  for (int i = iDim + 1; i < ((iDim + 1 + 7) & ~7); ++i) {
+    rd_u[i] = 0;
+  }
 
   int debug_i = -1, debug_j = -1;
   for (int basei = iDim; basei > 0; basei -= BLOCK) {
@@ -216,7 +226,6 @@ protected:
   volatile unsigned int step_;
 };
 
-
 // class dogBarrier {
 // public:
 //   static constexpr int barrier_thread = 16;
@@ -256,4 +265,3 @@ protected:
 //   // volatile int lock[2][THREAD_NUM]; // barrier_thread
 //   // volatile int lock[6][64];
 // };
-
