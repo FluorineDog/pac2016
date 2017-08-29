@@ -18,7 +18,7 @@ using std::endl;
 #include <set>
 #include <vector>
 
-constexpr int BLOCK = 280;
+constexpr int BLOCK = 1;
 constexpr int THREAD_NUM = 0; // magic !! don't modify !!
 typedef double __attribute((aligned(64))) aligned_double;
 using su_t = SprsUMatRealStru;
