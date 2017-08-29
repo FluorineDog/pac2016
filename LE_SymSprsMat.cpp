@@ -25,7 +25,11 @@
 
 double **UT_trans, **U_trans;
 int **UT_trans_in, **U_trans_in;
+int *UT_trans_in_size, *U_trans_in_size;
 double *tempX;
+
+#define neo_alloc(size, type) \
+    aligned_alloc(64, ((size) * sizeof(type) + 63) & ~63)
 
 //////////////////////////////////////////////////////////////////////
 // 函 数 名:          // initMem_MatReal
@@ -97,7 +101,7 @@ void allocate_MatReal(SprsMatRealStru *A)
 // 函 数 名:          // allocate_VecReal
 // 描    述:          // 实数向量分配维数
 // 输入参数:          // VecRealStru *V：实数向量
-// 输出参数:          // 无
+// 输出参数:          // 无\
 // 返 回 值:          // 无
 // 其    他:          // 调用该函数前向量元素数目V->iNy已经确定
 //////////////////////////////////////////////////////////////////////
@@ -605,8 +609,11 @@ void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
     }
 
     /// 2. get UT^-1
-    UT_trans = (double **)calloc(iDim + 1, sizeof(double *));
-    UT_trans_in = (int **)calloc(iDim + 1, sizeof(int *));
+    UT_trans = (double **)neo_alloc((iDim + 1), double *);
+    UT_trans_in = (int **)neo_alloc((iDim + 1), int *);
+    UT_trans_in_size = (int *)neo_alloc((iDim + 1), int);
+    memset(UT_trans_in_size, 0, (iDim + 1) * sizeof(int));
+
     for(int i=0; i<iDim + 1; ++i){
         UT_trans[i] = (double *)calloc(iDim + 1, sizeof(double));
         memset(UT_trans[i], 0, sizeof(double) * (iDim + 1));
@@ -636,7 +643,7 @@ void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
                 j++;
             }
         }
-        UT_trans_in[i][j] = 0;
+        UT_trans_in_size[i] = j;
     }
 
     //// <!-- debug -->
@@ -649,8 +656,11 @@ void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
     //exit(0);
 
     /// 3. get U^-1
-    U_trans = (double **)calloc(iDim + 1, sizeof(double *));
-    U_trans_in = (int **)calloc(iDim + 1, sizeof(int *));
+    U_trans = (double **)neo_alloc((iDim + 1), double *);
+    U_trans_in = (int **)neo_alloc((iDim + 1), int *);
+    U_trans_in_size = (int *)neo_alloc((iDim + 1), int);
+    memset(U_trans_in_size, 0, (iDim + 1) * sizeof(int));
+
     for(int i=0; i<iDim + 1; ++i){
         U_trans[i] = (double *)calloc(iDim + 1, sizeof(double));
         memset(U_trans[i], 0, sizeof(double) * (iDim + 1));
@@ -680,7 +690,7 @@ void LU_NumbericSymG(SprsMatRealStru *pG,SprsUMatRealStru *pFU)
                 j++;
             }
         }
-        U_trans_in[i][j] = 0;
+        U_trans_in_size[i] = j;
     }
 
     // <!-- debug -->
@@ -740,7 +750,7 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU,double b[],double x[])
     // ->> modified
     #pragma omp parallel for private(i, j) shared(UT_trans, UT_trans_in, x, b) schedule(dynamic, 3)
     for(i = 1; i <= iDim; ++i){
-        for(j = 1; UT_trans_in[i][j] != 0; ++j){
+        for(j = 1; j < UT_trans_in_size[i]; ++j){
             x[i] += UT_trans[i][j] * b[UT_trans_in[i][j]];
         }
     }
@@ -770,7 +780,7 @@ void LE_FBackwardSym(SprsUMatRealStru *pFU,double b[],double x[])
 
     #pragma omp parallel for private(i, j) shared(U_trans, U_trans_in, x, b) schedule(dynamic, 3)
     for(i = iDim; i >= 1; --i){
-        for(j = 1; U_trans_in[i][j] != 0; ++j){
+        for(j = 1; j < U_trans_in_size[i]; ++j){
             x[i] += U_trans[i][j] * tempX[U_trans_in[i][j]];
         }
     }
