@@ -394,6 +394,7 @@ int CompareVectorX(VecRealStru *X, int &nsize, VecRealStru *result) {
       assert(!std::isnan(result[i].pdVal[j]));
       if ((X[i].pdVal[j] - result[i].pdVal[j] > 1e-9) ||
           (result[i].pdVal[j] - X[i].pdVal[j] > 1e-9)) {
+        num++;
         if (i > tmp) {
           // IO is too slow:
           // only record the first vector
@@ -404,7 +405,6 @@ int CompareVectorX(VecRealStru *X, int &nsize, VecRealStru *result) {
                       "results=%22.15e,running result:%22.15e\n",
                   i, j, X[i].pdVal[j], result[i].pdVal[j]);
         }
-        num++;
       }
     }
   }
