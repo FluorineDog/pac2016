@@ -139,8 +139,9 @@ LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double *b, aligned_double *x) {
     }
   }
 
-  for (int i = 1; i <= iDim; i++)
-    x[i] = x[i] * rd_u[i];
+  for (int i = 1; i <= iDim; i++) {
+    tempx[i] = x[i] * rd_u[i];
+  }
 
   // for (int i = iDim - 1; i >= 1; i--) {
   //   int ks = rs_u[i];
@@ -162,7 +163,7 @@ LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double *b, aligned_double *x) {
   // barrierhead[1].Wait();
 
   for (int basei = iDim; basei > 0; basei -= BLOCK) {
-    // int iend = std::max(basei - BLOCK, 0);
+    int iend = std::max(basei - BLOCK, 0);
     //     // this loop is ready for parallel
     //     // #pragma omp parallel for firstprivate(paraRanges, columns, values,
     //     b) shared(tempx) schedule(static)
@@ -180,54 +181,52 @@ LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double *b, aligned_double *x) {
     //       tempx[i] = xc;
     //     }
     // continue;
-    int i = basei;
-    // for (int i = basei; i > iend; i--) {
-    __m512d sums = _mm512_setzero_pd();
-    // double xc = tempx[i];
-    int kbeg = paraRanges[i].beg;
-    int kend = paraRanges[i].end;
-    // #pragma omp parallel for reduction(+:sums) schedule(static)
-    for (int k = kbeg; k < kend; k += 8) {
-      // int j = columns[k];
-      __m256i indexs = _mm256_load_si256((__m256i *)(columns + k));
-      // tempx[j]
-      __m512d xs = _mm512_i32gather_pd(indexs, x, 8);
-      // values[k]
-      __m512d vals = _mm512_load_pd(values + k);
-      sums = _mm512_fmadd_pd(xs, vals, sums);
-      // xc += values[k] * tempx[j];
+    // int i = basei;
+    for (int i = basei; i > iend; i--) {
+      __m512d sums = _mm512_setzero_pd();
+      // double xc = tempx[i];
+      int kbeg = paraRanges[i].beg;
+      int kend = paraRanges[i].end;
+      // #pragma omp parallel for reduction(+:sums) schedule(static)
+      for (int k = kbeg; k < kend; k += 8) {
+        // int j = columns[k];
+        __m256i indexs = _mm256_load_si256((__m256i *)(columns + k));
+        // x[j]
+        __m512d xs = _mm512_i32gather_pd(indexs, x, 8);
+        // values[k]
+        __m512d vals = _mm512_load_pd(values + k);
+        sums = _mm512_fmadd_pd(xs, vals, sums);
+        // xc += values[k] * x[j];
+      }
+      double tmp = _mm512_reduce_add_pd(sums); // need more opt
+      // cerr << "diff"  << x[i] - tempx[i] - tmp << endl;
+      tempx[i] += tmp;
     }
-    double tmp = _mm512_reduce_add_pd(sums); // need more opt
-    // cerr << "diff"  << x[i] - tempx[i] - tmp << endl;
-    x[i] += tmp;
-    // }
 
-    continue;
     // // #pragma omp barrier
     // // #pragma omp parallel for firstprivate(seqRanges, columns, values,              \
     //                                   tempx) shared(x) schedule(static)
     // if (BLOCK > 1) {
     //   continue;
     // }
-    // for (int i = basei; i > iend; i--) {
-    //   __m512d sums = _mm512_setzero_pd();
-    //   // double xc = tempx[i];
-    //   int kbeg = seqRanges[i].beg;
-    //   int kend = seqRanges[i].end;
-    //   for (int k = kbeg; k < kend; k += 8) {
-    //     // int j = columns[k];
-    //     __m256i indexs = _mm256_load_si256((__m256i *)(columns + k));
-    //     // tempx[i]
-    //     __m512d xs = _mm512_i32gather_pd(indexs, tempx, 8);
-    //     // values[k]
-    //     __m512d vals = _mm512_load_pd(values + k);
-    //     sums = _mm512_fmadd_pd(xs, vals, sums);
-    //     // xc += values[k] * tempx[j];
-    //   }
-    //   double tmp = _mm512_reduce_add_pd(sums); // need more opt
-
-    //   x[i] = tmp + tempx[i];
-    // }
+    for (int i = basei; i > iend; i--) {
+      __m512d sums = _mm512_setzero_pd();
+      // double xc = tempx[i];
+      int kbeg = seqRanges[i].beg;
+      int kend = seqRanges[i].end;
+      for (int k = kbeg; k < kend; k += 8) {
+        // int j = columns[k];
+        __m256i indexs = _mm256_load_si256((__m256i *)(columns + k));
+        // tempx[i]
+        __m512d xs = _mm512_i32gather_pd(indexs, tempx, 8);
+        // values[k]
+        __m512d vals = _mm512_load_pd(values + k);
+        sums = _mm512_fmadd_pd(xs, vals, sums);
+        // xc += values[k] * tempx[j];
+      }
+      double tmp = _mm512_reduce_add_pd(sums); // need more opt
+      x[i] = tmp + tempx[i];
+    }
 
     // barrier
     // this loop is ready for parallel
