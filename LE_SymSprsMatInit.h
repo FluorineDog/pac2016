@@ -35,7 +35,8 @@ using su_t = SprsUMatRealStru;
 
 #define dog_free(ptr) free(ptr);
 
-// 描    述:          // 稀疏实数向量内存初始化。数目、指针变量置零
+// 描    述:          
+// 稀疏实数向量内存初始化。数目、指针变量置零
 void initMem_VecReal(VecRealStru *V) {
   // 内存初始化。数目、指针变量置零
   V->iNy = 0;
@@ -91,11 +92,13 @@ void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
       }
     }
   }
+
   int lines_sum = 0;
   for (int i = 1; i < iDim + 1; ++i) {
     lines_sum += (paraPart[i].size() + 7) / 8;
     lines_sum += (seqPart[i].size() + 7) / 8;
   }
+
   pFU->dogUMat.iDim = iDim;
   pFU->dogUMat.alloc_size = lines_sum * 8;
   dog_free(pFU->dogUMat.columns);
@@ -126,6 +129,8 @@ void AdditionLU_SymbolicSymG(SprsUMatRealStru *pFU) {
     }
     pFU->dogUMat.SeqRanges[i].end = col_index;
   }
+  void UpperAdditionLU_SymbolicSymG(su_t * pFU);
+  UpperAdditionLU_SymbolicSymG(pFU);
 }
 
 static void dog_init_task(su_t *U);
@@ -190,6 +195,8 @@ void AdditionLU_NumericSymG(SprsUMatRealStru *pFU) {
       }
     }
   }
+  void UpperAdditionLU_NumericSymG(SprsUMatRealStru * pFU);
+  UpperAdditionLU_NumericSymG(pFU);
   dog_init_task(pFU);
 }
 
@@ -265,3 +272,157 @@ protected:
 //   // volatile int lock[2][THREAD_NUM]; // barrier_thread
 //   // volatile int lock[6][64];
 // };
+
+void UpperAdditionLU_SymbolicSymG(su_t *pFU) {
+  int *rs_u = pFU->uMax.rs_u;
+  int *j_u = pFU->uMax.j_u;
+  int iDim = pFU->uMax.iDim;
+  std::vector<std::set<int>> refTable(iDim + 1);
+  for (int i = 1; i < iDim + 1; ++i) {
+    int kbeg = rs_u[i];
+    int kend = rs_u[i + 1];
+    for (int k = kbeg; k < kend; ++k) {
+      int j = j_u[k];
+      refTable[j].insert(i);
+    }
+  }
+
+  std::vector<std::set<int>> seqPart(iDim + 1);
+  std::vector<std::vector<int>> paraPart(iDim + 1);
+  for (int basei = 1; basei < iDim + 1; basei += BLOCK) {
+    int iend = std::min(basei + BLOCK, iDim + 1);
+    for (int i = basei; i < iend; ++i) {
+      const auto &ori = refTable[i];
+      for (auto x : ori) {
+        if (x < basei) {
+          paraPart[i].push_back(x);
+        } else {
+          seqPart[i].insert(x);
+          assert(x != i);
+          seqPart[i].insert(seqPart[x].begin(), seqPart[x].end());
+        }
+      }
+    }
+  }
+
+  // for (int i = 1; i < iDim + 1; ++i) {
+  //   cerr << i << " = ";
+  //   for (auto x : paraPart[2010]) {
+  //     cerr << x << " ";
+  //   }
+  //   cerr << "| ";
+  //   for (auto x : seqPart[2010]) {
+  //     cerr << x << " ";
+  //   }
+  //   cerr << endl;
+  // // }
+
+  int lines_sum = 0;
+  for (int i = 1; i < iDim + 1; ++i) {
+    lines_sum += (paraPart[i].size() + 7) / 8;
+    lines_sum += (seqPart[i].size() + 7) / 8;
+  }
+  pFU->dogUMat_upper.iDim = iDim;
+  pFU->dogUMat_upper.alloc_size = lines_sum * 8;
+  dog_free(pFU->dogUMat_upper.columns);
+  dog_free(pFU->dogUMat_upper.SeqRanges);
+  dog_free(pFU->dogUMat_upper.paraRanges);
+  dog_free(pFU->values_upper);
+
+  pFU->dogUMat_upper.SeqRanges = dog_calloc(iDim + 1, pair_ii_t);
+  pFU->dogUMat_upper.paraRanges = dog_calloc(iDim + 1, pair_ii_t);
+  pFU->dogUMat_upper.columns = dog_calloc(lines_sum * 8, int);
+  pFU->values_upper = dog_calloc(lines_sum * 8, double);
+
+  int col_index = 0;
+  for (int i = 1; i < iDim + 1; ++i) {
+    col_index = (col_index + 7) & ~7;
+    pFU->dogUMat_upper.paraRanges[i].beg = col_index;
+    for (auto x : paraPart[i]) {
+      pFU->dogUMat_upper.columns[col_index++] = x;
+    }
+    pFU->dogUMat_upper.paraRanges[i].end = col_index;
+
+    col_index = (col_index + 7) & ~7;
+    pFU->dogUMat_upper.SeqRanges[i].beg = col_index;
+    for (auto x : seqPart[i]) {
+      pFU->dogUMat_upper.columns[col_index++] = x;
+    }
+    pFU->dogUMat_upper.SeqRanges[i].end = col_index;
+  }
+}
+
+#include <memory>
+void UpperAdditionLU_NumericSymG(SprsUMatRealStru *pFU) {
+  // init
+  int *rs_u = pFU->uMax.rs_u;
+  int *j_u = pFU->uMax.j_u;
+  double *u_u = pFU->u_u;
+  auto paraRanges = pFU->dogUMat_upper.paraRanges;
+  auto seqRanges = pFU->dogUMat_upper.SeqRanges;
+  auto columns = pFU->dogUMat_upper.columns;
+  auto values_upper = pFU->values_upper;
+  memset(values_upper, 0, pFU->dogUMat_upper.alloc_size * sizeof(double));
+
+  std::unique_ptr<__float128[]> values_upper_cp(new __float128[pFU->dogUMat_upper.alloc_size]);
+  memset(values_upper_cp.get(), 0, pFU->dogUMat_upper.alloc_size * sizeof(__float128));
+
+  auto iDim = pFU->dogUMat_upper.iDim;
+  int debug_i = -1, debug_j = -1;
+
+  std::vector<std::map<int, double>> refTable(iDim + 1);
+  for (int i = 1; i < iDim + 1; ++i) {
+    int kbeg = rs_u[i];
+    int kend = rs_u[i + 1];
+    for (int k = kbeg; k < kend; ++k) {
+      int j = j_u[k];
+      refTable[j][i] = k;
+    }
+  }
+
+  for (int basei = 1; basei < iDim + 1; basei += BLOCK) {
+    int iend = std::min(iDim + 1, basei + BLOCK);
+    // (i,j) -> col_index;
+    std::map<int, std::map<int, int>> mapping;
+    for (int i = basei; i < iend; i++) {
+
+      for (int k = paraRanges[i].beg; k < paraRanges[i].end; ++k) {
+        int j = columns[k];
+        mapping[i][j] = k;
+      }
+
+      for (int k = seqRanges[i].beg; k < seqRanges[i].end; ++k) {
+        int j = columns[k];
+        mapping[i][j] = k;
+      }
+
+      // int kbeg = rs_u[i];
+      // int kend = rs_u[i + 1];
+      // for (int k = kbeg; k < kend; k++) {
+      for (auto pp : refTable[i]) {
+        int j = pp.first;
+        int col_id = mapping[i][j];
+        int k = pp.second;
+        __float128 coef = -u_u[k];
+        values_upper_cp[col_id] += coef;
+        if (j < basei) {
+          continue;
+        }
+        // if(i == 2010) cerr << "fuck" << j;
+        for (auto pair : mapping[j]) {
+          int cur_j = pair.first;
+          // if(i == 2010) cerr << "j" << j << "cur_j" << cur_j <<"*";
+          if (cur_j < basei) {
+            continue;
+          }
+          int cur_col_id = pair.second;
+          // god bless me !!!!
+          values_upper_cp[mapping[i][cur_j]] += coef * values_upper_cp[cur_col_id];
+        }
+      }
+    }
+  }
+  for(int i = 0; i < pFU->dogUMat_upper.alloc_size; ++i){
+    values_upper[i] = values_upper_cp[i];
+  }
+}

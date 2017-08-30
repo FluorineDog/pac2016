@@ -116,141 +116,179 @@ LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double *b, aligned_double *x) {
   int *rs_u = pFU->uMax.rs_u;
   int *j_u = pFU->uMax.j_u;
   int iDim = pFU->uMax.iDim;
-  auto paraRanges = pFU->dogUMat.paraRanges;
-  auto seqRanges = pFU->dogUMat.SeqRanges;
-  auto columns = pFU->dogUMat.columns;
-  auto values = pFU->values;
-  auto rd_u = pFU->rd_u;
 
-// // memcpy(x, b, (iDim + 1) * 8);
-//   for (int i = 0; i < iDim + 1; ++i) {
-//     x[i] = b[i];
-//   }
+  for (int i = 0; i < iDim + 1; ++i) {
+    x[i] = b[i];
+  }
 
-//   for (int i = 1; i <= iDim; i++) {
-//     double xc = x[i];
-//     int ks = rs_u[i];
-//     int ke = rs_u[i + 1];
+  // for (int i = 1; i <= iDim; i++) {
+  //   double xc = x[i];
+  //   int ks = rs_u[i];
+  //   int ke = rs_u[i + 1];
 
-//     for (int k = ks; k < ke; k++) {
-//       int j = j_u[k];
-//       x[j] -= u_u[k] * xc;
-//       assert(u_u[k] == u_u[k]);
-//     }
-//   }
+  //   for (int k = ks; k < ke; k++) {
+  //     int j = j_u[k];
+  //     x[j] -= u_u[k] * xc;
+  //     assert(u_u[k] == u_u[k]);
+  //   }
+  // }
+  // for (int i = 1; i <= iDim; i++) {
+  //   double xc = b[i];
+  //   int ks = rs_u[i];
+  //   int ke = rs_u[i + 1];
 
-//   for (int i = 1; i <= iDim; i++) {
-//     tempx[i] = x[i] * rd_u[i];
-//   }
-
-// for (int i = iDim - 1; i >= 1; i--) {
-//   int ks = rs_u[i];
-//   int ke = rs_u[i + 1] - 1;
-//   double xc = x[i];
-
-//   for (int k = ke; k >= ks; k--) {
-//     int j = j_u[k];
-//     xc -= u_u[k] * x[j];
-//   }
-//   x[i] = xc;
-// }
-
-// glo_x = x;
-// glo_b = b;
-// // count[0] = iDim;
-// // count[1] = iDim;
-// barrierhead[0].Wait();
-// barrierhead[1].Wait();
-
-  for (int basei = iDim; basei > 0; basei -= BLOCK) {
-    int iend = std::max(basei - BLOCK, 0);
-//     // this loop is ready for parallel
-//     // #pragma omp parallel for firstprivate(paraRanges, columns, values,
-//     b) shared(tempx) schedule(static)
-//     for (int i = basei; i > iend; i--) {
-//       double xc = tempx[i];
-//       int kbeg = paraRanges[i].beg;
-//       int kend = paraRanges[i].end;
-// // #pragma simd vectorlength(8), reduction(+ : xc)
-// // #pragma vector aligned
-// // #pragma ivdep
-//       for (int k = kbeg; k < kend; ++k) {
-//         int j = columns[k];
-//         xc += values[k] * tempx[j];
-//       }
-//       tempx[i] = xc;
-//     }
-// continue;
-// int i = basei;
-#pragma omp parallel for firstprivate(tempx, paraRanges, columns,              \
-                                      values) schedule(static)
-    for (int i = basei; i > iend; i--) {
-      __m512d sums = _mm512_setzero_pd();
-      // double xc = tempx[i];
-      int kbeg = paraRanges[i].beg;
-      int kend = paraRanges[i].end;
-      // #pragma omp parallel for reduction(+:sums) schedule(static)
-      for (int k = kbeg; k < kend; k += 8) {
-        // int j = columns[k];
-        __m256i indexs = _mm256_load_si256((__m256i *)(columns + k));
-        // x[j]
-        __m512d xs = _mm512_i32gather_pd(indexs, x, 8);
-        // values[k]
-        __m512d vals = _mm512_load_pd(values + k);
-        sums = _mm512_fmadd_pd(xs, vals, sums);
-        // xc += values[k] * x[j];
+  //   for (int k = ks; k < ke; k++) {
+  //     int j = j_u[k];
+  //     b[j] -= u_u[k] * xc;
+  //     assert(u_u[k] == u_u[k]);
+  //   }
+  // }
+  
+  {
+    auto paraRanges = pFU->dogUMat_upper.paraRanges;
+    auto seqRanges = pFU->dogUMat_upper.SeqRanges;
+    auto columns = pFU->dogUMat_upper.columns;
+    auto values = pFU->values_upper;
+    for (int basei = 1; basei < iDim + 1; basei += BLOCK) {
+      int iend = std::min(basei + BLOCK, iDim + 1);
+      for (int i = basei; i < iend; i++) {
+        double xc = x[i];
+        int kbeg = paraRanges[i].beg;
+        int kend = paraRanges[i].end;
+        // if(i >= 2000 && i <= 2010) cerr << i << "=";
+        // cerr << kend - kbeg << endl;
+        for (int k = kbeg; k < kend; ++k) {
+          int j = columns[k];
+          xc += values[k] * x[j];
+          // if(i >= 2000 && i <= 2010) {
+            // cerr << j << "@" << values[k] << " ";
+          // }
+        }
+        // if(i >= 2000 && i <= 2010) cerr << endl;
+        tempx[i] = xc;
       }
-      double tmp = _mm512_reduce_add_pd(sums); // need more opt
-      tempx[i] += tmp;
-    }
 
-// // #pragma omp barrier
-// // #pragma omp parallel for firstprivate(seqRanges, columns, values,              \
-    //                                   tempx) shared(x) schedule(static)
-// if (BLOCK > 1) {
-//   continue;
-// }
-#pragma omp barrier
-#pragma omp parallel for firstprivate(x, paraRanges, columns,                  \
-                                      values) schedule(static)
-    for (int i = basei; i > iend; i--) {
-      __m512d sums = _mm512_setzero_pd();
-      // double xc = tempx[i];
-      int kbeg = seqRanges[i].beg;
-      int kend = seqRanges[i].end;
-      for (int k = kbeg; k < kend; k += 8) {
-        // int j = columns[k];
-        __m256i indexs = _mm256_load_si256((__m256i *)(columns + k));
-        // tempx[i]
-        __m512d xs = _mm512_i32gather_pd(indexs, tempx, 8);
-        // values[k]
-        __m512d vals = _mm512_load_pd(values + k);
-        sums = _mm512_fmadd_pd(xs, vals, sums);
-        // xc += values[k] * tempx[j];
+      int i = basei;
+      for (int i = basei; i < iend; i++) {
+        double xc = tempx[i];
+        int kbeg = seqRanges[i].beg;
+        int kend = seqRanges[i].end;
+        // cerr << i << "<>";
+        // if(i >= 2000 && i <= 2010) cerr << i << "<>";
+        for (int k = kbeg; k < kend; ++k) {
+          int j = columns[k];
+          xc += values[k] * tempx[j];
+          // if(i >= 2000 && i <= 2010) cerr << j << "@" << values[k] << " ";
+        }
+        // if(i >= 2000 && i <= 2010)  cerr << endl;
+        x[i] = xc;
+        // cerr << i << "<*>" << b[i] - x[i] << endl;
       }
-      double tmp = _mm512_reduce_add_pd(sums); // need more opt
-      x[i] = tmp + tempx[i];
     }
+  }
+  // exit(-1);
 
-    // barrier
-    // this loop is ready for parallel
-    // #pragma omp barrier
-    // #pragma omp parallel for firstprivate(seqRanges, columns, values, tempx)
-    // shared(x) schedule(static)
-    // for (int i = basei; i > iend; i--) {
-    //   double xc = tempx[i];
-    //   int kbeg = seqRanges[i].beg;
-    //   int kend = seqRanges[i].end;
-    //   // #pragma simd vectorlength(8), reduction(+:xc)
-    //   // #pragma vector aligned
-    //   // #pragma ivdep
-    //   for (int k = kbeg; k < kend; ++k) {
-    //     cerr << "fuck";
-    //     int j = columns[k];
-    //     xc += values[k] * tempx[j];
-    //   }
-    //   x[i] = xc;
-    // }
+  {
+    auto rd_u = pFU->rd_u;
+    for (int i = 1; i <= iDim; i++) {
+      x[i] = x[i] * rd_u[i];
+    }
+  }
+
+  // for (int i = iDim - 1; i >= 1; i--) {
+  //   int ks = rs_u[i];
+  //   int ke = rs_u[i + 1] - 1;
+  //   double xc = x[i];
+
+  //   for (int k = ke; k >= ks; k--) {
+  //     int j = j_u[k];
+  //     xc -= u_u[k] * x[j];
+  //   }
+  //   x[i] = xc;
+  // }
+
+  // glo_x = x;
+  // glo_b = b;
+  // // count[0] = iDim;
+  // // count[1] = iDim;
+  // barrierhead[0].Wait();
+  // barrierhead[1].Wait();
+  // if (false) 
+  {
+    auto paraRanges = pFU->dogUMat.paraRanges;
+    auto seqRanges = pFU->dogUMat.SeqRanges;
+    auto columns = pFU->dogUMat.columns;
+    auto values = pFU->values;
+
+    for (int basei = iDim; basei > 0; basei -= BLOCK) {
+      int iend = std::max(basei - BLOCK, 0);
+      // this loop is ready for parallel
+      for (int i = basei; i > iend; i--) {
+        double xc = x[i];
+        int kbeg = paraRanges[i].beg;
+        int kend = paraRanges[i].end;
+        for (int k = kbeg; k < kend; ++k) {
+          int j = columns[k];
+          xc += values[k] * x[j];
+        }
+        tempx[i] = xc;
+      }
+      int i = basei;
+      for (int i = basei; i > iend; i--) {
+        double xc = tempx[i];
+        int kbeg = seqRanges[i].beg;
+        int kend = seqRanges[i].end;
+        for (int k = kbeg; k < kend; ++k) {
+          int j = columns[k];
+          xc += values[k] * tempx[j];
+        }
+        x[i] = xc;
+      }
+
+      // #pragma omp parallel for firstprivate(tempx, paraRanges, columns,              \
+//                                       values) schedule(static)
+      //     for (int i = basei; i > iend; i--) {
+      //       __m512d sums = _mm512_setzero_pd();
+      //       // double xc = tempx[i];
+      //       int kbeg = paraRanges[i].beg;
+      //       int kend = paraRanges[i].end;
+      //       // #pragma omp parallel for reduction(+:sums) schedule(static)
+      //       for (int k = kbeg; k < kend; k += 8) {
+      //         // int j = columns[k];
+      //         __m256i indexs = _mm256_load_si256((__m256i *)(columns + k));
+      //         // x[j]
+      //         __m512d xs = _mm512_i32gather_pd(indexs, x, 8);
+      //         // values[k]
+      //         __m512d vals = _mm512_load_pd(values + k);
+      //         sums = _mm512_fmadd_pd(xs, vals, sums);
+      //         // xc += values[k] * x[j];
+      //       }
+      //       double tmp = _mm512_reduce_add_pd(sums); // need more opt
+      //       tempx[i] += tmp;
+      //     }
+
+      // #pragma omp barrier
+      // #pragma omp parallel for firstprivate(x, paraRanges, columns,                  \
+//                                       values) schedule(static)
+      //     for (int i = basei; i > iend; i--) {
+      //       __m512d sums = _mm512_setzero_pd();
+      //       // double xc = tempx[i];
+      //       int kbeg = seqRanges[i].beg;
+      //       int kend = seqRanges[i].end;
+      //       for (int k = kbeg; k < kend; k += 8) {
+      //         // int j = columns[k];
+      //         __m256i indexs = _mm256_load_si256((__m256i *)(columns + k));
+      //         // tempx[i]
+      //         __m512d xs = _mm512_i32gather_pd(indexs, tempx, 8);
+      //         // values[k]
+      //         __m512d vals = _mm512_load_pd(values + k);
+      //         sums = _mm512_fmadd_pd(xs, vals, sums);
+      //         // xc += values[k] * tempx[j];
+      //       }
+      //       double tmp = _mm512_reduce_add_pd(sums); // need more opt
+      //       x[i] = tmp + tempx[i];
+      //     }
+    }
   }
 }
 
@@ -269,6 +307,11 @@ void initMem_UMatReal(SprsUMatRealStru *U) {
   U->uMax.iNzs = 0;
   // dog implement
   U->rd_u = nullptr;
+
+  U->dogUMat_upper.columns = nullptr;
+  U->dogUMat_upper.SeqRanges = nullptr;
+  U->dogUMat_upper.paraRanges = nullptr;
+  U->values_upper = nullptr;
   U->dogUMat.columns = nullptr;
   U->dogUMat.SeqRanges = nullptr;
   U->dogUMat.paraRanges = nullptr;
@@ -291,6 +334,12 @@ void deallocate_UMatReal(SprsUMatRealStru *U) {
   dog_free(U->dogUMat.SeqRanges);
   dog_free(U->dogUMat.paraRanges);
   dog_free(U->values);
+
+  dog_free(U->dogUMat_upper.columns);
+  dog_free(U->dogUMat_upper.SeqRanges);
+  dog_free(U->dogUMat_upper.paraRanges);
+  dog_free(U->values_upper);
+
   initMem_UMatReal(U);
   finalize_task(U);
 }
