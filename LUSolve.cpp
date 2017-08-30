@@ -20,7 +20,7 @@ void dog_checker(const SprsMatRealStru &A, const double x[],
       if(j != i){
         b[j] += x[i]*a[jLoc];
       }
-		}	
+		} 
   }
   double maxdiff = 0;
   for(int i = 0; i < n; ++i){
@@ -31,7 +31,7 @@ void dog_checker(const SprsMatRealStru &A, const double x[],
   auto count = std::count_if(b.get(), b.get() + n, [=](double x){return x > maxdiff/10;});
   cerr << " and " << count << " numbers is in the same magnitude" << endl;
 }
-							
+       
 
 int main(int argc, const char *argv[]) {
   unsigned long long timeStart; // 仿真开始时间
