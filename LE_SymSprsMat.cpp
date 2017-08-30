@@ -132,39 +132,23 @@ LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double *b, aligned_double *x) {
   //     assert(u_u[k] == u_u[k]);
   //   }
   // }
-  // for (int i = 1; i <= iDim; i++) {
-  //   double xc = b[i];
-  //   int ks = rs_u[i];
-  //   int ke = rs_u[i + 1];
-
-  //   for (int k = ks; k < ke; k++) {
-  //     int j = j_u[k];
-  //     b[j] -= u_u[k] * xc;
-  //     assert(u_u[k] == u_u[k]);
-  //   }
-  // }
   
   {
     auto paraRanges = pFU->dogUMat_upper.paraRanges;
     auto seqRanges = pFU->dogUMat_upper.SeqRanges;
     auto columns = pFU->dogUMat_upper.columns;
     auto values = pFU->values_upper;
+
     for (int basei = 1; basei < iDim + 1; basei += BLOCK) {
       int iend = std::min(basei + BLOCK, iDim + 1);
       for (int i = basei; i < iend; i++) {
         double xc = x[i];
         int kbeg = paraRanges[i].beg;
         int kend = paraRanges[i].end;
-        // if(i >= 2000 && i <= 2010) cerr << i << "=";
-        // cerr << kend - kbeg << endl;
         for (int k = kbeg; k < kend; ++k) {
           int j = columns[k];
           xc += values[k] * x[j];
-          // if(i >= 2000 && i <= 2010) {
-            // cerr << j << "@" << values[k] << " ";
-          // }
         }
-        // if(i >= 2000 && i <= 2010) cerr << endl;
         tempx[i] = xc;
       }
 
@@ -173,20 +157,14 @@ LE_FBackwardSym(SprsUMatRealStru *pFU, aligned_double *b, aligned_double *x) {
         double xc = tempx[i];
         int kbeg = seqRanges[i].beg;
         int kend = seqRanges[i].end;
-        // cerr << i << "<>";
-        // if(i >= 2000 && i <= 2010) cerr << i << "<>";
         for (int k = kbeg; k < kend; ++k) {
           int j = columns[k];
           xc += values[k] * tempx[j];
-          // if(i >= 2000 && i <= 2010) cerr << j << "@" << values[k] << " ";
         }
-        // if(i >= 2000 && i <= 2010)  cerr << endl;
         x[i] = xc;
-        // cerr << i << "<*>" << b[i] - x[i] << endl;
       }
     }
   }
-  // exit(-1);
 
   {
     auto rd_u = pFU->rd_u;
