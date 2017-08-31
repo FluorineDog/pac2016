@@ -403,8 +403,7 @@ void LU_SymbolicSymG(SprsMatRealStru *pG, SprsUMatRealStru *pFU) {
   free(Flag);
   free(Pattern);
   free(pParent);
-  void AdditionLU_SymbolicSymG(SprsUMatRealStru * pFU);
-  AdditionLU_SymbolicSymG(pFU);
+
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -521,6 +520,8 @@ void LU_NumbericSymG(SprsMatRealStru *pG, SprsUMatRealStru *pFU) {
       rs_u[i + 1] = j;
     }
   }
+  void AdditionLU_SymbolicSymG(SprsUMatRealStru * pFU);
+  AdditionLU_SymbolicSymG(pFU);
   void AdditionLU_NumericSymG(SprsUMatRealStru * pFU);
   AdditionLU_NumericSymG(pFU);
 }

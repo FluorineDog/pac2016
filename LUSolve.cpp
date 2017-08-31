@@ -77,7 +77,7 @@ int main(int argc, const char *argv[]) {
     LU_NumbericSymG(&A, &U);
     // cerr << "h";
     for (i = 0; i < nsize; i++) {
-      for (j = 0; j < 2; j++) {
+      for (j = 0; j < 20; j++) {
         // cerr << "fuck";
         LE_FBackwardSym(&U, B[i].pdVal, X[i].pdVal);
       }
